@@ -7,9 +7,11 @@ import {
   TextInput,
   Alert,
   SafeAreaView,
+  ScrollView,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../App';
+import Rive from 'rive-react-native';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -40,7 +42,19 @@ export default function HomeScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.animationContainer}>
+          <Rive
+            url="https://public.rive.app/community/runtime-files/2195-4346-avatar-pack-use-case.riv"
+            artboardName="Avatar 1"
+            stateMachineName="avatar"
+            style={styles.riveAnimation}
+          />
+        </View>
         <Text style={styles.title}>🎨 Pictionary Game</Text>
         <Text style={styles.subtitle}>Draw and guess words with friends!</Text>
 
@@ -82,7 +96,7 @@ export default function HomeScreen({ navigation }: Props) {
             <Text style={styles.buttonText}>🤔 Start Guessing</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -92,10 +106,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8fafc',
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
     padding: 20,
-    justifyContent: 'center',
+    paddingBottom: 40,
+  },
+  animationContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  riveAnimation: {
+    width: 200,
+    height: 200,
   },
   title: {
     fontSize: 32,
