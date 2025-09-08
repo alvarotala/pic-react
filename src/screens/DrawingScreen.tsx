@@ -25,6 +25,7 @@ export default function DrawingScreen({ navigation, route }: Props) {
   const { word } = route.params;
   const [isDrawing, setIsDrawing] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60);
+  const [isFinished, setIsFinished] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const clearTimer = () => {
@@ -40,6 +41,7 @@ export default function DrawingScreen({ navigation, route }: Props) {
         if (prev <= 1) {
           // Clear the timer immediately when time runs out
           clearTimer();
+          setIsFinished(true);
           Alert.alert('Time\'s up!', 'Great job drawing!', [
             { text: 'OK', onPress: () => navigation.goBack() }
           ]);
@@ -58,12 +60,13 @@ export default function DrawingScreen({ navigation, route }: Props) {
 
   const handleFinishDrawing = () => {
     clearTimer();
+    setIsFinished(true);
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.wordText}>Draw: {word}</Text>
+        <Text style={styles.wordText}>Draw: {isFinished ? word : '?'}</Text>
         <Text style={styles.timerText}>Time: {timeLeft}s</Text>
       </View>
 
@@ -71,17 +74,20 @@ export default function DrawingScreen({ navigation, route }: Props) {
         <DrawingCanvas
           style={styles.drawingCanvas}
           onDrawingChange={handleDrawingChange}
+          disabled={isFinished}
         />
       </View>
 
-      <View style={styles.controls}>
-        <TouchableOpacity
-          style={[styles.button, styles.finishButton]}
-          onPress={handleFinishDrawing}
-        >
-          <Text style={styles.buttonText}>Finish Drawing</Text>
-        </TouchableOpacity>
-      </View>
+      {!isFinished && (
+        <View style={styles.controls}>
+          <TouchableOpacity
+            style={[styles.button, styles.finishButton]}
+            onPress={handleFinishDrawing}
+          >
+            <Text style={styles.buttonText}>Finish Drawing</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }

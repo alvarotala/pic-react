@@ -11,6 +11,7 @@ import Svg, { Path } from 'react-native-svg';
 interface DrawingCanvasProps {
   style?: any;
   onDrawingChange?: (isDrawing: boolean) => void;
+  disabled?: boolean;
 }
 
 interface Point {
@@ -18,7 +19,7 @@ interface Point {
   y: number;
 }
 
-const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ style, onDrawingChange }) => {
+const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ style, onDrawingChange, disabled }) => {
   const [paths, setPaths] = useState<string[]>([]);
   const [currentPath, setCurrentPath] = useState<string>('');
   const [isDrawing, setIsDrawing] = useState(false);
@@ -35,6 +36,8 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ style, onDrawingChange })
   };
 
   const onGestureEvent = (event: PanGestureHandlerGestureEvent) => {
+    if (disabled) return;
+    
     const { x, y, state } = event.nativeEvent;
     const point = { x, y };
 
@@ -111,15 +114,17 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ style, onDrawingChange })
           </Svg>
         </View>
       </PanGestureHandler>
-      
-      <View style={styles.controls}>
-        <TouchableOpacity style={styles.controlButton} onPress={undoLastPath}>
-          <Text style={styles.controlText}>↶ Undo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.controlButton} onPress={clearCanvas}>
-          <Text style={styles.controlText}>🗑️ Clear</Text>
-        </TouchableOpacity>
-      </View>
+
+      {!disabled && ( 
+        <View style={styles.controls}>
+          <TouchableOpacity style={styles.controlButton} onPress={undoLastPath}>
+            <Text style={styles.controlText}>↶ Undo</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.controlButton} onPress={clearCanvas}>
+            <Text style={styles.controlText}>🗑️ Clear</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };
