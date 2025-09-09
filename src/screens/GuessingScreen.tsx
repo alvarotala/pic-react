@@ -27,7 +27,6 @@ export default function GuessingScreen({ navigation, route }: Props) {
   const [guess, setGuess] = useState('');
   const [attempts, setAttempts] = useState(0);
   const [isCorrect, setIsCorrect] = useState(false);
-  const [riveError, setRiveError] = useState(false);
 
   const handleGuess = () => {
     if (!guess.trim()) {
@@ -97,12 +96,14 @@ export default function GuessingScreen({ navigation, route }: Props) {
 
       <View style={styles.animationArea}>
         <View style={styles.riveAnimation}>
-          <Text style={styles.animationPlaceholder}>
-            🎨 Rive Animation
-          </Text>
-          <Text style={styles.animationSubtext}>
-            (Requires development build)
-          </Text>
+          <Rive
+            // source={require('../../assets/test.riv')}
+            url="https://public.rive.app/community/runtime-files/2195-4346-avatar-pack-use-case.riv"
+            style={styles.rivePlayer}
+            // artboardName="Avatar 2"
+            // stateMachineName="avatar"
+            // autoplay={true}
+          />
         </View>
         
         <View style={styles.hintArea}>
@@ -197,6 +198,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#d1d5db',
     borderStyle: 'dashed',
+  },
+  rivePlayer: {
+    width: '100%',
+    height: '100%',
   },
   animationPlaceholder: {
     fontSize: 24,
