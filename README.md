@@ -98,3 +98,8 @@ interface DrawingCanvasProps {
 - Add more drawing tools and features
 - Include sound effects and haptic feedback
 - Add user profiles and scoring system
+
+
+
+
+https://rive.app/community/files/2195-4346-avatar-pack-use-case/
