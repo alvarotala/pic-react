@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   TextInput,
   Alert,
   SafeAreaView,
@@ -11,7 +12,7 @@ import {
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../App';
-import Rive from 'rive-react-native';
+import Rive, { RiveRef } from 'rive-react-native';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -26,17 +27,32 @@ const WORDS = [
 
 export default function HomeScreen({ navigation }: Props) {
   const [selectedWord, setSelectedWord] = useState<string>('');
+  const riveRef = useRef<RiveRef>(null);
+
+  useEffect(() => {
+    if (selectedWord) {
+      riveRef.current?.setInputState('avatar', 'isHappy', true);
+      riveRef.current?.setInputState('avatar', 'isSad', false);
+    }
+  }, [selectedWord]);
 
   const handleStartDrawing = () => {
     if (!selectedWord) {
       Alert.alert('Please select a word', 'Choose a word to draw!');
       return;
     }
+
+    riveRef.current?.setInputState('avatar', 'isHappy', false);
+    riveRef.current?.setInputState('avatar', 'isSad', false);
     navigation.navigate('Drawing', { word: selectedWord });
   };
 
   const handleStartGuessing = () => {
     const randomWord = WORDS[Math.floor(Math.random() * WORDS.length)];
+
+    riveRef.current?.setInputState('avatar', 'isHappy', false);
+    riveRef.current?.setInputState('avatar', 'isSad', true);
+
     navigation.navigate('Guessing', { word: randomWord });
   };
 
@@ -49,11 +65,12 @@ export default function HomeScreen({ navigation }: Props) {
       >
         <View style={styles.animationContainer}>
           <Rive
-            url="https://public.rive.app/community/runtime-files/2195-4346-avatar-pack-use-case.riv"
-            artboardName="Avatar 1"
-            stateMachineName="avatar"
-            style={styles.riveAnimation}
-          />
+              ref={riveRef}
+              url="https://public.rive.app/community/runtime-files/2195-4346-avatar-pack-use-case.riv"
+              artboardName="Avatar 1"
+              stateMachineName="avatar"
+              style={styles.riveAnimation}
+            />
         </View>
         <Text style={styles.title}>🎨 Pictionary Game</Text>
         <Text style={styles.subtitle}>Draw and guess words with friends!</Text>
@@ -86,6 +103,7 @@ export default function HomeScreen({ navigation }: Props) {
             style={[styles.button, styles.drawButton]}
             onPress={handleStartDrawing}
           >
+            
             <Text style={styles.buttonText}>🎨 Start Drawing</Text>
           </TouchableOpacity>
 
@@ -116,6 +134,12 @@ const styles = StyleSheet.create({
   animationContainer: {
     alignItems: 'center',
     marginBottom: 20,
+  },
+  avatarButton: {
+    width: 200,
+    height: 200,
+    backgroundColor: 'transparent',
+    borderRadius: 100,
   },
   riveAnimation: {
     width: 200,
