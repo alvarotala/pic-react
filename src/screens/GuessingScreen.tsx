@@ -97,12 +97,8 @@ export default function GuessingScreen({ navigation, route }: Props) {
       <View style={styles.animationArea}>
         <View style={styles.riveAnimation}>
           <Rive
-            // source={require('../../assets/test.riv')}
             url="https://public.rive.app/community/runtime-files/2195-4346-avatar-pack-use-case.riv"
             style={styles.rivePlayer}
-            // artboardName="Avatar 2"
-            // stateMachineName="avatar"
-            // autoplay={true}
           />
         </View>
         
