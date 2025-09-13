@@ -7,9 +7,7 @@ import {
   TextInput,
   SafeAreaView,
   Alert,
-  Platform,
 } from 'react-native';
-import Rive from 'rive-react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
@@ -94,14 +92,7 @@ export default function GuessingScreen({ navigation, route }: Props) {
         <Text style={styles.attemptsText}>Attempts: {attempts}/3</Text>
       </View>
 
-      <View style={styles.animationArea}>
-        <View style={styles.riveAnimation}>
-          <Rive
-            url="https://public.rive.app/community/runtime-files/2195-4346-avatar-pack-use-case.riv"
-            style={styles.rivePlayer}
-          />
-        </View>
-        
+      <View style={styles.animationArea}>        
         <View style={styles.hintArea}>
           <Text style={styles.hintText}>
             Look at the drawing and guess what it is!
@@ -184,20 +175,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     overflow: 'hidden',
-  },
-  riveAnimation: {
-    width: '100%',
-    height: 300,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    borderWidth: 2,
-    borderColor: '#d1d5db',
-    borderStyle: 'dashed',
-  },
-  rivePlayer: {
-    width: '100%',
-    height: '100%',
   },
   animationPlaceholder: {
     fontSize: 24,
