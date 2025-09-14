@@ -32,7 +32,7 @@ This app includes a fully functional drawing system:
 
 1. Navigate to the project directory:
    ```bash
-   cd pictionary-app
+   cd pic-react
    ```
 
 2. Install dependencies:
@@ -51,55 +51,3 @@ This app includes a fully functional drawing system:
    npm run android # Android Emulator
    npm run web     # Web browser
    ```
-
-## Project Structure
-
-```
-src/
-├── components/
-│   └── DrawingCanvas.tsx      # Touch-based drawing component
-├── screens/
-│   ├── HomeScreen.tsx         # Main menu and word selection
-│   ├── DrawingScreen.tsx      # Drawing interface with timer
-│   └── GuessingScreen.tsx     # Guessing interface with attempts
-└── types/                     # TypeScript type definitions
-```
-
-## Drawing Implementation Details
-
-### Drawing Canvas Component
-
-The `DrawingCanvas` component provides a complete drawing experience:
-
-```typescript
-interface DrawingCanvasProps {
-  style?: any;
-  onDrawingChange?: (isDrawing: boolean) => void;
-}
-```
-
-### Drawing Features
-
-- **SVG-based Drawing**: Uses react-native-svg for smooth vector graphics
-- **Gesture Handling**: Pan gesture handler for touch drawing
-- **Path Management**: Tracks drawing paths for undo functionality
-- **Real-time Updates**: Immediate visual feedback during drawing
-
-### Drawing Controls
-
-- **Undo**: Remove the last drawn path
-- **Clear**: Clear all drawings from the canvas
-- **Drawing State**: Tracks when user is actively drawing
-
-## Future Enhancements
-
-- Add actual Rive animation files
-- Implement real-time multiplayer functionality
-- Add more drawing tools and features
-- Include sound effects and haptic feedback
-- Add user profiles and scoring system
-
-
-
-
-https://rive.app/community/files/2195-4346-avatar-pack-use-case/
