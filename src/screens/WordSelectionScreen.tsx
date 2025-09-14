@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -26,7 +26,7 @@ const WORD_CATEGORIES = {
 };
 
 export default function WordSelectionScreen({ navigation }: Props) {
-  const { gameState, playerId, selectWord } = useSocket();
+  const { gameState, playerId, selectWord, lastCorrectGuess, clearCorrectGuess, cancelGame, wasGameCancelled, clearCancelled } = useSocket();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -34,14 +34,55 @@ export default function WordSelectionScreen({ navigation }: Props) {
   useEffect(() => {
     if (gameState) {
       if (gameState.gameState === 'waiting') {
-        navigation.navigate('Home');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        });
       } else if (gameState.gameState === 'drawing') {
-        navigation.navigate('Drawing');
-      } else if (gameState.gameState === 'finished' || gameState.gameState === 'game-over') {
-        navigation.navigate('Guessing');
+        navigation.replace('Drawing');
+      } else if (gameState.gameState === 'finished') {
+        // When a word is guessed correctly, show message and continue to next round
+        // DO NOT navigate anywhere - just stay on this screen and show the success message
+        console.log('Word was guessed correctly! Staying on WordSelectionScreen...');
+      } else if (gameState.gameState === 'game-over') {
+        // Game is completely finished, go back to home
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        });
       }
     }
   }, [gameState, navigation]);
+
+  // Handle game cancellation broadcast
+  useEffect(() => {
+    if (wasGameCancelled) {
+      Alert.alert('Game cancelled', 'The host cancelled the game.', [
+        { text: 'OK', onPress: () => {} }
+      ]);
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+      clearCancelled();
+    }
+  }, [wasGameCancelled, clearCancelled, navigation]);
+
+  // Header: replace back with Cancel action
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity
+          onPress={() => {
+            Alert.alert('Cancel game', 'Are you sure you want to cancel the game for everyone?', [
+              { text: 'No', style: 'cancel' },
+              { text: 'Yes, cancel', style: 'destructive', onPress: () => cancelGame() },
+            ]);
+          }}
+          style={{ marginLeft: 12 }}
+        >
+          <Text style={{ color: '#fff', fontSize: 16 }}>Cancel</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, cancelGame]);
 
   const handleCategorySelect = (category: string) => {
     setSelectedCategory(category);
@@ -67,6 +108,14 @@ export default function WordSelectionScreen({ navigation }: Props) {
     selectWord(selectedWord);
   };
 
+  const handleContinueToNextRound = () => {
+    clearCorrectGuess();
+    // Reset selection state for new round
+    setSelectedCategory(null);
+    setSelectedWord(null);
+    setIsSelecting(false);
+  };
+
   const isCurrentDrawer = gameState?.currentDrawer === playerId;
 
   // Debug logging
@@ -75,7 +124,35 @@ export default function WordSelectionScreen({ navigation }: Props) {
   console.log('WordSelectionScreen - playerId:', playerId);
   console.log('WordSelectionScreen - isCurrentDrawer:', isCurrentDrawer);
 
-  if (!gameState || gameState.gameState !== 'word-selection') {
+  if (!gameState) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show end-of-round summary while server transitions to next round
+  if (gameState.gameState === 'finished') {
+    const topPlayer = [...gameState.players].sort((a, b) => b.score - a.score)[0];
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.waitingTitle}>Round finished</Text>
+          {topPlayer && (
+            <Text style={styles.waitingText}>
+              Top score: {topPlayer.name} ({topPlayer.score} pts)
+            </Text>
+          )}
+          <Text style={styles.waitingSubtext}>Next round will start automatically...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (gameState.gameState !== 'word-selection') {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -116,6 +193,21 @@ export default function WordSelectionScreen({ navigation }: Props) {
           <Text style={styles.title}>Select a Word to Draw</Text>
           <Text style={styles.subtitle}>Choose a word that others can guess!</Text>
         </View>
+
+        {lastCorrectGuess && (
+          <View style={styles.correctGuessContainer}>
+            <Text style={styles.correctGuessTitle}>🎉 Word Guessed Correctly!</Text>
+            <Text style={styles.correctGuessText}>
+              {lastCorrectGuess.playerName} guessed "{lastCorrectGuess.guess}" correctly!
+            </Text>
+            <TouchableOpacity
+              style={styles.continueButton}
+              onPress={handleContinueToNextRound}
+            >
+              <Text style={styles.continueButtonText}>Continue to Next Round</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.categorySection}>
           <Text style={styles.sectionTitle}>Choose a Category:</Text>
@@ -381,5 +473,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     fontWeight: '500',
+  },
+  correctGuessContainer: {
+    backgroundColor: '#10b981',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  correctGuessTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  correctGuessText: {
+    fontSize: 16,
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 16,
+    opacity: 0.9,
+  },
+  continueButton: {
+    backgroundColor: '#ffffff',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  continueButtonText: {
+    color: '#10b981',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -41,19 +41,20 @@ A real-time multiplayer Pictionary game where mobile users create rooms and draw
 ## How to Play
 
 ### Game Flow
-1. **Mobile user creates room** → Gets a room code to share
-2. **Web users join room** → Enter the room code to join
-3. **Mobile user starts game** → Selects a word from categories
-4. **Mobile user draws** → Creates drawing in real-time
-5. **Web users guess** → Submit guesses for the drawing
-6. **Scoring** → Points awarded for correct guesses
-7. **Next round** → Mobile user selects new word and draws again
+1. **Mobile creates room (host & drawer)** → Shares code with web users
+2. **Web users join** → Enter the room code to join as guessers
+3. **Start game (mobile only)** → Mobile selects a word from categories
+4. **Drawing phase** → Mobile draws; web users guess in real-time
+5. **Correct guess** → Scores awarded; round ends; brief summary shows top scorer
+6. **Next round** → Automatically transitions back to word selection (mobile)
+7. **Game over** → After max rounds, show final scores
 
 ### Key Rules
 - **Mobile = Always Drawer**: Mobile users never guess, only draw
 - **Web = Always Guesser**: Web users never draw, only guess
 - **No Role Exchange**: Roles are fixed throughout the entire game
 - **Mobile Controls Game**: Only mobile users can create rooms and start games
+- **Cancel Game**: Only the mobile host can cancel a game in progress. All clients are notified and sent back to the home screen.
 
 ## Getting Started
 
@@ -122,34 +123,22 @@ npm start
 2. Start the web client (`cd web-client && npm start`)
 3. Start the mobile app (`npm start`)
 4. Open `http://localhost:3000` in your browser
-5. Create a room on the web client
-6. Join the room from your mobile app using the room code
+5. On the mobile app, create a room (host)
+6. On the web client(s), join the room using the code shown on mobile
 
 
-### Game Flow
+### Scoring & Rounds
 
-1. **Create/Join Room**: 
-   - Web users create a room and get a room code
-   - Mobile users enter the room code to join
+- **Per correct guess**: Drawer +10 pts, Guesser +15 pts
+- **Timer**: 60 seconds per round
+- **Round End**: When someone guesses correctly or time runs out. Top scorer is shown briefly to the mobile host before the next round starts automatically.
+- **Max Rounds**: 3 (configurable in server)
 
-2. **Lobby**: 
-   - All players wait in the lobby
-   - Game starts when at least 2 players are present
+### Cancel Game
 
-3. **Drawing Phase**:
-   - One player is randomly selected to draw
-   - Drawing is synchronized in real-time to all other players
-   - 60-second timer for each round
-
-4. **Guessing Phase**:
-   - Other players submit guesses
-   - Correct guesses award points to both drawer and guesser
-   - Round ends when someone guesses correctly or time runs out
-
-5. **Scoring**:
-   - Drawer gets 10 points for each correct guess
-   - Guesser gets 15 points for correct guess
-   - Game continues for 3 rounds
+- The mobile host can cancel a game at any time.
+- When cancelled, the server broadcasts `game-cancelled` to all players.
+- All clients (mobile and web) are returned to their Home/Join screen.
 
 ## Development
 

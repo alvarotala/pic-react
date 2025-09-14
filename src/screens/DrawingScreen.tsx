@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ interface Props {
 }
 
 export default function DrawingScreen({ navigation }: Props) {
-  const { gameState, playerId, sendDrawingData } = useSocket();
+  const { gameState, playerId, sendDrawingData, cancelGame, wasGameCancelled, clearCancelled } = useSocket();
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPaths, setCurrentPaths] = useState<string[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -27,17 +27,58 @@ export default function DrawingScreen({ navigation }: Props) {
   useEffect(() => {
     if (gameState) {
       if (gameState.gameState === 'waiting') {
-        navigation.navigate('Home');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        });
       } else if (gameState.gameState === 'drawing') {
         // Sync with server drawing data
         if (gameState.drawingData && gameState.drawingData.paths) {
           setCurrentPaths(gameState.drawingData.paths);
         }
-      } else if (gameState.gameState === 'finished' || gameState.gameState === 'game-over') {
-        navigation.navigate('Home');
+      } else if (gameState.gameState === 'finished') {
+        // When a word is guessed correctly, navigate back to WordSelectionScreen
+        // DO NOT go to Home - go back to word selection for next round
+        navigation.replace('WordSelection');
+      } else if (gameState.gameState === 'game-over') {
+        // Game is completely finished, go back to home
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        });
       }
     }
   }, [gameState, navigation]);
+
+  // Handle game cancellation broadcast
+  useEffect(() => {
+    if (wasGameCancelled) {
+      Alert.alert('Game cancelled', 'The host cancelled the game.', [
+        { text: 'OK', onPress: () => {} }
+      ]);
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+      clearCancelled();
+    }
+  }, [wasGameCancelled, clearCancelled, navigation]);
+
+  // Header: replace back with Cancel action
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity
+          onPress={() => {
+            Alert.alert('Cancel game', 'Are you sure you want to cancel the game for everyone?', [
+              { text: 'No', style: 'cancel' },
+              { text: 'Yes, cancel', style: 'destructive', onPress: () => cancelGame() },
+            ]);
+          }}
+          style={{ marginLeft: 12 }}
+        >
+          <Text style={{ color: '#fff', fontSize: 16 }}>Cancel</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, cancelGame]);
 
   const handleDrawingChange = (drawing: boolean) => {
     setIsDrawing(drawing);
@@ -101,6 +142,8 @@ export default function DrawingScreen({ navigation }: Props) {
         </Text>
         <Text style={styles.timerText}>Time: {gameState.timeLeft}s</Text>
       </View>
+
+      {/* Cancel is now in header */}
 
       <View style={styles.playerInfo}>
         <Text style={styles.drawerText}>

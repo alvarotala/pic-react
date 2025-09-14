@@ -38,7 +38,7 @@ function App() {
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState('');
   const [roomCode, setRoomCode] = useState('');
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'lobby' | 'drawing' | 'guessing'>('home');
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'lobby' | 'waiting-for-word' | 'drawing' | 'guessing'>('home');
   const [guess, setGuess] = useState('');
   const [recentGuesses, setRecentGuesses] = useState<Array<{
     playerName: string;
@@ -99,8 +99,8 @@ function App() {
 
     newSocket.on('game-started', (state: GameState) => {
       setGameState(state);
-      setCurrentScreen(state.currentDrawer === playerId ? 'drawing' : 'guessing');
-      console.log('Game started');
+      setCurrentScreen('waiting-for-word');
+      console.log('Game started, waiting for word selection');
     });
 
     newSocket.on('word-selected', (state: GameState) => {
@@ -360,6 +360,48 @@ function App() {
     </div>
   );
 
+  const renderWaitingForWord = () => (
+    <div className="container">
+      <div className="game-header">
+        <h2>Waiting for word selection...</h2>
+        <div className="game-info">
+          <span className="round">Round {gameState?.rounds}/{gameState?.maxRounds}</span>
+        </div>
+      </div>
+
+      <div className="drawing-area">
+        <div className="drawing-canvas">
+          <svg 
+            width="100%" 
+            height="300" 
+            style={{ border: '2px dashed #e2e8f0', backgroundColor: '#f8fafc' }}
+          >
+            <g>
+              <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" fontSize="24" fill="#6b7280">
+                ⏳ Waiting for word selection...
+              </text>
+              <text x="50%" y="60%" textAnchor="middle" dominantBaseline="middle" fontSize="16" fill="#9ca3af">
+                The mobile user is selecting a word to draw
+              </text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <div className="players-section">
+        <h3>Players:</h3>
+        {gameState?.players.map((player) => (
+          <div key={player.id} className="player-item">
+            <span className="player-name">
+              {player.name} {player.isDrawing ? '🎨' : '👀'}
+            </span>
+            <span className="player-score">{player.score} pts</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   const renderGuessing = () => (
     <div className="container">
       <div className="game-header">
@@ -470,6 +512,8 @@ function App() {
       return renderHome();
     case 'lobby':
       return renderLobby();
+    case 'waiting-for-word':
+      return renderWaitingForWord();
     case 'drawing':
       return renderDrawing();
     case 'guessing':

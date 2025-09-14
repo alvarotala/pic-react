@@ -41,6 +41,7 @@ class GameRoom {
     this.rounds = 0;
     this.maxRounds = 3;
     this.scores = new Map();
+    this.timer = null;
   }
 
   addPlayer(socketId, playerName, playerType) {
@@ -189,6 +190,42 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Cancel the current game (mobile host only)
+  socket.on('cancel-game', (roomId) => {
+    const normalizedRoomId = (roomId || '').toLowerCase();
+    const room = gameRooms.get(normalizedRoomId);
+    if (!room) return;
+
+    // Only host (mobile creator) can cancel the game
+    if (socket.id !== room.hostId) {
+      return;
+    }
+
+    // Stop any running timer
+    if (room.timer) {
+      clearInterval(room.timer);
+      room.timer = null;
+    }
+
+    // Notify all players and close the room
+    io.to(normalizedRoomId).emit('game-cancelled');
+
+    // Disconnect all sockets from the room
+    const roomSockets = io.sockets.adapter.rooms.get(normalizedRoomId);
+    if (roomSockets) {
+      for (const clientId of roomSockets) {
+        const clientSocket = io.sockets.sockets.get(clientId);
+        if (clientSocket) {
+          clientSocket.leave(normalizedRoomId);
+        }
+      }
+    }
+
+    // Delete room entirely
+    gameRooms.delete(normalizedRoomId);
+    console.log(`Game in room ${normalizedRoomId} cancelled by host ${socket.id}`);
+  });
+
   // Handle word selection (mobile only)
   socket.on('select-word', (roomId, word) => {
     console.log(`Received word selection from ${socket.id} for room ${roomId}: ${word}`);
@@ -308,12 +345,19 @@ function startGameTimer(roomId) {
   const room = gameRooms.get(normalizedRoomId);
   if (!room) return;
 
-  const timer = setInterval(() => {
+  // Clear any existing timer before starting a new one
+  if (room.timer) {
+    clearInterval(room.timer);
+    room.timer = null;
+  }
+
+  room.timer = setInterval(() => {
     room.timeLeft--;
     io.to(normalizedRoomId).emit('timer-update', room.timeLeft);
 
     if (room.timeLeft <= 0) {
-      clearInterval(timer);
+      clearInterval(room.timer);
+      room.timer = null;
       endRound(normalizedRoomId);
     }
   }, 1000);
@@ -324,6 +368,12 @@ function endRound(roomId) {
   const normalizedRoomId = roomId.toLowerCase();
   const room = gameRooms.get(normalizedRoomId);
   if (!room) return;
+
+  // Ensure timer is stopped at round end
+  if (room.timer) {
+    clearInterval(room.timer);
+    room.timer = null;
+  }
 
   room.gameState = 'finished';
   io.to(normalizedRoomId).emit('round-ended', room.getGameState());

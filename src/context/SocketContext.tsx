@@ -38,15 +38,20 @@ interface SocketContextType {
   playerType: 'mobile' | 'web' | null;
   roomId: string | null;
   roomError: string | null;
+  lastCorrectGuess: { playerName: string; guess: string } | null;
+  wasGameCancelled: boolean;
   connect: () => void;
   createRoom: (playerName: string) => void;
   joinRoom: (roomId: string, playerName: string) => void;
   startGame: () => void;
+  cancelGame: () => void;
   selectWord: (word: string) => void;
   sendDrawingData: (drawingData: any) => void;
   submitGuess: (guess: string) => void;
   disconnect: () => void;
   clearRoomError: () => void;
+  clearCorrectGuess: () => void;
+  clearCancelled: () => void;
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -62,6 +67,8 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [playerType] = useState<'mobile' | 'web'>('mobile');
   const [roomId, setRoomId] = useState<string | null>(null);
   const [roomError, setRoomError] = useState<string | null>(null);
+  const [lastCorrectGuess, setLastCorrectGuess] = useState<{ playerName: string; guess: string } | null>(null);
+  const [wasGameCancelled, setWasGameCancelled] = useState<boolean>(false);
 
   const connect = () => {
     if (socket) {
@@ -145,6 +152,10 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     newSocket.on('correct-guess', (guessData: any, state: GameState) => {
       setGameState(state);
+      setLastCorrectGuess({
+        playerName: guessData.playerName,
+        guess: guessData.guess
+      });
       console.log('Correct guess:', guessData);
     });
 
@@ -162,6 +173,13 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     newSocket.on('game-over', (state: GameState) => {
       setGameState(state);
       console.log('Game over');
+    });
+
+    newSocket.on('game-cancelled', () => {
+      console.log('Game cancelled by host');
+      setWasGameCancelled(true);
+      setGameState(null);
+      setRoomId(null);
     });
 
     newSocket.on('game-start-denied', (message: string) => {
@@ -192,6 +210,12 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const startGame = () => {
     if (socket && roomId) {
       socket.emit('start-game', roomId);
+    }
+  };
+
+  const cancelGame = () => {
+    if (socket && roomId && playerType === 'mobile') {
+      socket.emit('cancel-game', roomId);
     }
   };
 
@@ -226,6 +250,14 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setRoomError(null);
   };
 
+  const clearCorrectGuess = () => {
+    setLastCorrectGuess(null);
+  };
+
+  const clearCancelled = () => {
+    setWasGameCancelled(false);
+  };
+
   // Auto-connect on component mount
   useEffect(() => {
     connect();
@@ -242,15 +274,20 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         playerType,
         roomId,
         roomError,
+        lastCorrectGuess,
+        wasGameCancelled,
         connect,
         createRoom,
         joinRoom,
         startGame,
+        cancelGame,
         selectWord,
         sendDrawingData,
         submitGuess,
         disconnect,
         clearRoomError,
+        clearCorrectGuess,
+        clearCancelled,
       }}
     >
       {children}
