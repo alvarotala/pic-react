@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,86 +8,124 @@ import {
   Alert,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
+import { useSocket } from '../context/SocketContext';
 import DrawingCanvas from '../components/DrawingCanvas';
 
 type DrawingScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Drawing'>;
-type DrawingScreenRouteProp = RouteProp<RootStackParamList, 'Drawing'>;
 
 interface Props {
   navigation: DrawingScreenNavigationProp;
-  route: DrawingScreenRouteProp;
 }
 
-
-export default function DrawingScreen({ navigation, route }: Props) {
-  const { word } = route.params;
+export default function DrawingScreen({ navigation }: Props) {
+  const { gameState, playerId, sendDrawingData } = useSocket();
   const [isDrawing, setIsDrawing] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(60);
-  const [isFinished, setIsFinished] = useState(false);
+  const [currentPaths, setCurrentPaths] = useState<string[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const clearTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  };
-
   useEffect(() => {
-    timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          // Clear the timer immediately when time runs out
-          clearTimer();
-          setIsFinished(true);
-          Alert.alert('Time\'s up!', 'Great job drawing!', [
-            { text: 'OK', onPress: () => navigation.goBack() }
-          ]);
-          return 0;
+    if (gameState) {
+      if (gameState.gameState === 'waiting') {
+        navigation.navigate('Home');
+      } else if (gameState.gameState === 'drawing') {
+        // Sync with server drawing data
+        if (gameState.drawingData && gameState.drawingData.paths) {
+          setCurrentPaths(gameState.drawingData.paths);
         }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearTimer();
-  }, [navigation]);
+      } else if (gameState.gameState === 'finished' || gameState.gameState === 'game-over') {
+        navigation.navigate('Guessing');
+      }
+    }
+  }, [gameState, navigation]);
 
   const handleDrawingChange = (drawing: boolean) => {
     setIsDrawing(drawing);
   };
 
-  const handleFinishDrawing = () => {
-    clearTimer();
-    setIsFinished(true);
+  const handleDrawingUpdate = (paths: string[]) => {
+    setCurrentPaths(paths);
+    
+    // Send drawing data to server if this player is the drawer
+    if (gameState?.currentDrawer === playerId) {
+      sendDrawingData({ paths });
+    }
   };
+
+  const isCurrentDrawer = gameState?.currentDrawer === playerId;
+
+  if (!gameState || gameState.gameState !== 'drawing') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.wordText}>Draw: {isFinished ? word : '?'}</Text>
-        <Text style={styles.timerText}>Time: {timeLeft}s</Text>
+        <Text style={styles.wordText}>
+          {isCurrentDrawer ? `Draw: ${gameState.currentWord}` : 'Watch the drawing!'}
+        </Text>
+        <Text style={styles.timerText}>Time: {gameState.timeLeft}s</Text>
+      </View>
+
+      <View style={styles.playerInfo}>
+        <Text style={styles.drawerText}>
+          {isCurrentDrawer ? 'You are drawing!' : `${gameState.players.find(p => p.id === gameState.currentDrawer)?.name} is drawing`}
+        </Text>
+        <Text style={styles.roundText}>
+          Round {gameState.rounds}/{gameState.maxRounds}
+        </Text>
       </View>
 
       <View style={styles.drawingArea}>
         <DrawingCanvas
           style={styles.drawingCanvas}
           onDrawingChange={handleDrawingChange}
-          disabled={isFinished}
+          disabled={!isCurrentDrawer}
+          paths={currentPaths}
+          onPathsChange={handleDrawingUpdate}
+          isMultiplayer={true}
         />
       </View>
 
-      {!isFinished && (
-        <View style={styles.controls}>
-          <TouchableOpacity
-            style={[styles.button, styles.finishButton]}
-            onPress={handleFinishDrawing}
-          >
-            <Text style={styles.buttonText}>Finish Drawing</Text>
-          </TouchableOpacity>
+      {isCurrentDrawer && (
+        <View style={styles.instructions}>
+          <Text style={styles.instructionText}>
+            Draw: {gameState.currentWord}
+          </Text>
+          <Text style={styles.instructionSubtext}>
+            Other players are trying to guess your drawing!
+          </Text>
         </View>
       )}
+
+      {!isCurrentDrawer && (
+        <View style={styles.guessingInfo}>
+          <Text style={styles.guessingText}>
+            Try to guess what's being drawn!
+          </Text>
+          <Text style={styles.guessingSubtext}>
+            You'll get points for correct guesses
+          </Text>
+        </View>
+      )}
+
+      <View style={styles.playersList}>
+        <Text style={styles.playersTitle}>Players:</Text>
+        {gameState.players.map((player) => (
+          <View key={player.id} style={styles.playerItem}>
+            <Text style={styles.playerName}>
+              {player.name} {player.isDrawing ? '🎨' : '👀'}
+            </Text>
+            <Text style={styles.playerScore}>{player.score} pts</Text>
+          </View>
+        ))}
+      </View>
     </SafeAreaView>
   );
 }
@@ -96,6 +134,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#6b7280',
   },
   header: {
     flexDirection: 'row',
@@ -107,14 +154,32 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e2e8f0',
   },
   wordText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#1e293b',
   },
   timerText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#ef4444',
+  },
+  playerInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  drawerText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  roundText: {
+    fontSize: 14,
+    color: '#6b7280',
   },
   drawingArea: {
     flex: 1,
@@ -131,25 +196,63 @@ const styles = StyleSheet.create({
   drawingCanvas: {
     flex: 1,
   },
-  controls: {
-    padding: 20,
+  instructions: {
+    padding: 16,
+    backgroundColor: '#10b981',
+    alignItems: 'center',
+  },
+  instructionText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  instructionSubtext: {
+    fontSize: 14,
+    color: '#ffffff',
+    opacity: 0.9,
+  },
+  guessingInfo: {
+    padding: 16,
+    backgroundColor: '#6366f1',
+    alignItems: 'center',
+  },
+  guessingText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  guessingSubtext: {
+    fontSize: 14,
+    color: '#ffffff',
+    opacity: 0.9,
+  },
+  playersList: {
+    padding: 16,
     backgroundColor: '#ffffff',
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
   },
-  button: {
-    backgroundColor: '#10b981',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  finishButton: {
-    backgroundColor: '#10b981',
-  },
-  buttonText: {
-    color: '#ffffff',
+  playersTitle: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  playerItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  playerName: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  playerScore: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '500',
   },
 });

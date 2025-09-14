@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,136 +6,174 @@ import {
   TouchableOpacity,
   TextInput,
   SafeAreaView,
-  Alert,
+  ScrollView,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
+import { useSocket } from '../context/SocketContext';
 
 type GuessingScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Guessing'>;
-type GuessingScreenRouteProp = RouteProp<RootStackParamList, 'Guessing'>;
 
 interface Props {
   navigation: GuessingScreenNavigationProp;
-  route: GuessingScreenRouteProp;
 }
 
-export default function GuessingScreen({ navigation, route }: Props) {
-  const { word } = route.params;
+export default function GuessingScreen({ navigation }: Props) {
+  const { gameState, playerId, submitGuess } = useSocket();
   const [guess, setGuess] = useState('');
-  const [attempts, setAttempts] = useState(0);
-  const [isCorrect, setIsCorrect] = useState(false);
+  const [recentGuesses, setRecentGuesses] = useState<Array<{
+    playerName: string;
+    guess: string;
+    timestamp: number;
+  }>>([]);
 
-  const handleGuess = () => {
-    if (!guess.trim()) {
-      Alert.alert('Enter a guess', 'Please type your guess before submitting!');
-      return;
-    }
-
-    const newAttempts = attempts + 1;
-    setAttempts(newAttempts);
-
-    if (guess.toLowerCase().trim() === word.toLowerCase()) {
-      setIsCorrect(true);
-      Alert.alert(
-        '🎉 Correct!',
-        `You guessed it right! The word was "${word}". It took you ${newAttempts} attempt${newAttempts > 1 ? 's' : ''}.`,
-        [
-          { text: 'Play Again', onPress: () => navigation.navigate('Home') },
-          { text: 'Guess Another', onPress: () => navigation.replace('Guessing', { word: getRandomWord() }) }
-        ]
-      );
-    } else {
-      if (newAttempts >= 3) {
-        Alert.alert(
-          'Game Over!',
-          `Sorry, you've used all your attempts. The word was "${word}".`,
-          [
-            { text: 'Try Again', onPress: () => navigation.navigate('Home') }
-          ]
-        );
-      } else {
-        Alert.alert(
-          'Not quite right!',
-          `Try again! You have ${3 - newAttempts} attempt${3 - newAttempts > 1 ? 's' : ''} left.`,
-          [{ text: 'OK' }]
-        );
+  useEffect(() => {
+    if (gameState) {
+      if (gameState.gameState === 'waiting') {
+        navigation.navigate('Home');
+      } else if (gameState.gameState === 'drawing') {
+        navigation.navigate('Drawing');
+      } else if (gameState.gameState === 'game-over') {
+        // Handle game over
       }
     }
+  }, [gameState, navigation]);
+
+  useEffect(() => {
+    if (gameState?.guesses) {
+      // Update recent guesses (last 5)
+      const recent = gameState.guesses
+        .slice(-5)
+        .map(g => ({
+          playerName: g.playerName,
+          guess: g.guess,
+          timestamp: g.timestamp
+        }));
+      setRecentGuesses(recent);
+    }
+  }, [gameState?.guesses]);
+
+  const handleSubmitGuess = () => {
+    if (!guess.trim()) return;
     
+    submitGuess(guess.trim());
     setGuess('');
   };
 
-  const getRandomWord = () => {
-    const words = [
-      'Cat', 'Dog', 'House', 'Tree', 'Car', 'Sun', 'Moon', 'Star',
-      'Fish', 'Bird', 'Flower', 'Mountain', 'Ocean', 'Rainbow', 'Butterfly', 'Elephant'
-    ];
-    return words[Math.floor(Math.random() * words.length)];
-  };
+  const isCurrentDrawer = gameState?.currentDrawer === playerId;
+  const isGameOver = gameState?.gameState === 'game-over';
 
-  const handleGiveUp = () => {
-    Alert.alert(
-      'Give Up?',
-      `The word was "${word}". Would you like to try another word?`,
-      [
-        { text: 'Back to Home', onPress: () => navigation.navigate('Home') },
-        { text: 'Try Another', onPress: () => navigation.replace('Guessing', { word: getRandomWord() }) }
-      ]
+  if (!gameState || isCurrentDrawer) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
     );
-  };
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Guess the Drawing!</Text>
-        <Text style={styles.attemptsText}>Attempts: {attempts}/3</Text>
-      </View>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Guess the Drawing!</Text>
+          {!isGameOver && (
+            <Text style={styles.timerText}>Time: {gameState.timeLeft}s</Text>
+          )}
+        </View>
 
-      <View style={styles.animationArea}>        
-        <View style={styles.hintArea}>
-          <Text style={styles.hintText}>
-            Look at the drawing and guess what it is!
+        <View style={styles.gameInfo}>
+          <Text style={styles.roundText}>
+            Round {gameState.rounds}/{gameState.maxRounds}
           </Text>
-          <Text style={styles.wordLengthText}>
-            Word length: {word.length} letters
+          <Text style={styles.drawerText}>
+            {gameState.players.find(p => p.id === gameState.currentDrawer)?.name} is drawing
           </Text>
         </View>
-      </View>
 
-      <View style={styles.inputArea}>
-        <TextInput
-          style={styles.textInput}
-          value={guess}
-          onChangeText={setGuess}
-          placeholder="Enter your guess..."
-          placeholderTextColor="#9ca3af"
-          autoCapitalize="words"
-          autoCorrect={false}
-          editable={!isCorrect && attempts < 3}
-        />
-        
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[
-              styles.button,
-              styles.guessButton,
-              (!guess.trim() || isCorrect || attempts >= 3) && styles.disabledButton
-            ]}
-            onPress={handleGuess}
-            disabled={!guess.trim() || isCorrect || attempts >= 3}
-          >
-            <Text style={styles.buttonText}>Submit Guess</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.button, styles.giveUpButton]}
-            onPress={handleGiveUp}
-          >
-            <Text style={styles.buttonText}>Give Up</Text>
-          </TouchableOpacity>
+        {gameState.drawingData && (
+          <View style={styles.drawingArea}>
+            <Text style={styles.drawingTitle}>Current Drawing:</Text>
+            <View style={styles.drawingPlaceholder}>
+              <Text style={styles.drawingText}>🎨</Text>
+              <Text style={styles.drawingSubtext}>Drawing in progress...</Text>
+            </View>
+          </View>
+        )}
+
+        {!isGameOver && (
+          <View style={styles.guessingArea}>
+            <Text style={styles.guessingTitle}>Make your guess:</Text>
+            <TextInput
+              style={styles.textInput}
+              value={guess}
+              onChangeText={setGuess}
+              placeholder="Enter your guess..."
+              placeholderTextColor="#9ca3af"
+              autoCapitalize="words"
+              autoCorrect={false}
+              onSubmitEditing={handleSubmitGuess}
+            />
+            <TouchableOpacity
+              style={[styles.button, !guess.trim() && styles.disabledButton]}
+              onPress={handleSubmitGuess}
+              disabled={!guess.trim()}
+            >
+              <Text style={styles.buttonText}>Submit Guess</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <View style={styles.guessesArea}>
+          <Text style={styles.guessesTitle}>Recent Guesses:</Text>
+          {recentGuesses.length > 0 ? (
+            recentGuesses.map((guessItem, index) => (
+              <View key={index} style={styles.guessItem}>
+                <Text style={styles.guessPlayer}>{guessItem.playerName}:</Text>
+                <Text style={styles.guessText}>"{guessItem.guess}"</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noGuessesText}>No guesses yet...</Text>
+          )}
         </View>
-      </View>
+
+        <View style={styles.playersList}>
+          <Text style={styles.playersTitle}>Players:</Text>
+          {gameState.players.map((player) => (
+            <View key={player.id} style={styles.playerItem}>
+              <Text style={styles.playerName}>
+                {player.name} {player.isDrawing ? '🎨' : '👀'}
+              </Text>
+              <Text style={styles.playerScore}>{player.score} pts</Text>
+            </View>
+          ))}
+        </View>
+
+        {isGameOver && (
+          <View style={styles.gameOverArea}>
+            <Text style={styles.gameOverTitle}>🎉 Game Over! 🎉</Text>
+            <Text style={styles.gameOverSubtext}>Final Scores:</Text>
+            {gameState.players
+              .sort((a, b) => b.score - a.score)
+              .map((player, index) => (
+                <View key={player.id} style={styles.finalScoreItem}>
+                  <Text style={styles.finalScoreRank}>
+                    {index + 1}. {player.name}
+                  </Text>
+                  <Text style={styles.finalScore}>{player.score} pts</Text>
+                </View>
+              ))}
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.navigate('Home')}
+            >
+              <Text style={styles.backButtonText}>Play Again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -145,102 +183,257 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8fafc',
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#6b7280',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    marginBottom: 20,
   },
   title: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#1e293b',
   },
-  attemptsText: {
-    fontSize: 16,
+  timerText: {
+    fontSize: 18,
     fontWeight: '600',
-    color: '#64748b',
+    color: '#ef4444',
   },
-  animationArea: {
-    flex: 1,
-    margin: 20,
+  gameInfo: {
     backgroundColor: '#ffffff',
     borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    overflow: 'hidden',
   },
-  animationPlaceholder: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#6b7280',
-    marginBottom: 8,
-  },
-  animationSubtext: {
-    fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
-  },
-  hintArea: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#f8fafc',
-  },
-  hintText: {
-    fontSize: 18,
+  roundText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#374151',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 4,
   },
-  wordLengthText: {
-    fontSize: 16,
+  drawerText: {
+    fontSize: 14,
     color: '#6b7280',
     textAlign: 'center',
   },
-  inputArea: {
-    padding: 20,
+  drawingArea: {
     backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  drawingTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  drawingPlaceholder: {
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    borderStyle: 'dashed',
+  },
+  drawingText: {
+    fontSize: 48,
+    marginBottom: 8,
+  },
+  drawingSubtext: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  guessingArea: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  guessingTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
   },
   textInput: {
     borderWidth: 2,
     borderColor: '#d1d5db',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 8,
+    padding: 12,
     fontSize: 16,
     backgroundColor: '#f9fafb',
-    marginBottom: 16,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    gap: 12,
+    marginBottom: 12,
   },
   button: {
-    flex: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  guessButton: {
     backgroundColor: '#10b981',
-  },
-  giveUpButton: {
-    backgroundColor: '#ef4444',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
   },
   disabledButton: {
     backgroundColor: '#9ca3af',
   },
   buttonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  guessesArea: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  guessesTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  guessItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    marginBottom: 4,
+  },
+  guessPlayer: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    marginRight: 8,
+  },
+  guessText: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontStyle: 'italic',
+  },
+  noGuessesText: {
+    fontSize: 14,
+    color: '#9ca3af',
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  playersList: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  playersTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  playerItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  playerName: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  playerScore: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  gameOverArea: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  gameOverTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  gameOverSubtext: {
+    fontSize: 16,
+    color: '#374151',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  finalScoreItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  finalScoreRank: {
+    fontSize: 16,
+    color: '#374151',
+  },
+  finalScore: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  backButton: {
+    backgroundColor: '#6366f1',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  backButtonText: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',

@@ -12,6 +12,9 @@ interface DrawingCanvasProps {
   style?: any;
   onDrawingChange?: (isDrawing: boolean) => void;
   disabled?: boolean;
+  paths?: string[];
+  onPathsChange?: (paths: string[]) => void;
+  isMultiplayer?: boolean;
 }
 
 interface Point {
@@ -19,11 +22,21 @@ interface Point {
   y: number;
 }
 
-const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ style, onDrawingChange, disabled }) => {
-  const [paths, setPaths] = useState<string[]>([]);
+const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ 
+  style, 
+  onDrawingChange, 
+  disabled, 
+  paths: externalPaths,
+  onPathsChange,
+  isMultiplayer = false 
+}) => {
+  const [internalPaths, setInternalPaths] = useState<string[]>([]);
   const [currentPath, setCurrentPath] = useState<string>('');
   const [isDrawing, setIsDrawing] = useState(false);
   const lastPoint = useRef<Point | null>(null);
+
+  // Use external paths for multiplayer, internal paths for single player
+  const paths = isMultiplayer ? (externalPaths || []) : internalPaths;
 
   const createPath = (points: Point[]): string => {
     if (points.length === 0) return '';
@@ -62,7 +75,12 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ style, onDrawingChange, d
         setIsDrawing(false);
         onDrawingChange?.(false);
         if (currentPath) {
-          setPaths(prev => [...prev, currentPath]);
+          const newPaths = [...paths, currentPath];
+          if (isMultiplayer) {
+            onPathsChange?.(newPaths);
+          } else {
+            setInternalPaths(newPaths);
+          }
           setCurrentPath('');
         }
         lastPoint.current = null;
@@ -71,14 +89,24 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ style, onDrawingChange, d
   };
 
   const clearCanvas = () => {
-    setPaths([]);
+    const newPaths: string[] = [];
+    if (isMultiplayer) {
+      onPathsChange?.(newPaths);
+    } else {
+      setInternalPaths(newPaths);
+    }
     setCurrentPath('');
     setIsDrawing(false);
     onDrawingChange?.(false);
   };
 
   const undoLastPath = () => {
-    setPaths(prev => prev.slice(0, -1));
+    const newPaths = paths.slice(0, -1);
+    if (isMultiplayer) {
+      onPathsChange?.(newPaths);
+    } else {
+      setInternalPaths(newPaths);
+    }
   };
 
   return (

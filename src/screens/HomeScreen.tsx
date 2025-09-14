@@ -1,15 +1,17 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  TextInput,
   Alert,
   SafeAreaView,
   ScrollView,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../App';
+import { useSocket } from '../context/SocketContext';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -17,25 +19,104 @@ interface Props {
   navigation: HomeScreenNavigationProp;
 }
 
-const WORDS = [
-  'Cat', 'Dog', 'House', 'Tree', 'Car', 'Sun', 'Moon', 'Star',
-  'Fish', 'Bird', 'Flower', 'Mountain', 'Ocean', 'Rainbow', 'Butterfly', 'Elephant'
-];
-
 export default function HomeScreen({ navigation }: Props) {
-  const [selectedWord, setSelectedWord] = useState<string>('');
+  const { gameState, isConnected, connect, createRoom, joinRoom } = useSocket();
+  const [playerName, setPlayerName] = useState('');
+  const [roomCode, setRoomCode] = useState('');
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
 
-  const handleStartDrawing = () => {
-    if (!selectedWord) {
-      Alert.alert('Please select a word', 'Choose a word to draw!');
+  useEffect(() => {
+    if (gameState && gameState.gameState === 'drawing') {
+      navigation.navigate('Drawing');
+    } else if (gameState && gameState.gameState === 'waiting') {
+      // Stay on this screen to show lobby
+    }
+  }, [gameState, navigation]);
+
+  const handleCreateRoom = () => {
+    if (!playerName.trim()) {
+      Alert.alert('Enter your name', 'Please enter your name to create a room!');
       return;
     }
-    navigation.navigate('Drawing', { word: selectedWord });
+
+    setIsCreatingRoom(true);
+    if (!isConnected) {
+      connect();
+    }
+    createRoom(playerName.trim());
   };
 
-  const handleStartGuessing = () => {
-    const randomWord = WORDS[Math.floor(Math.random() * WORDS.length)];
-    navigation.navigate('Guessing', { word: randomWord });
+  const handleJoinRoom = () => {
+    if (!playerName.trim()) {
+      Alert.alert('Enter your name', 'Please enter your name to join a room!');
+      return;
+    }
+    
+    if (!roomCode.trim()) {
+      Alert.alert('Enter room code', 'Please enter a room code to join!');
+      return;
+    }
+
+    setIsJoiningRoom(true);
+    if (!isConnected) {
+      connect();
+    }
+    joinRoom(roomCode.trim().toUpperCase(), playerName.trim());
+  };
+
+  const handleStartGame = () => {
+    if (gameState && gameState.players.length >= 2) {
+      navigation.navigate('Drawing');
+    } else {
+      Alert.alert('Not enough players', 'You need at least 2 players to start the game!');
+    }
+  };
+
+  const renderLobby = () => {
+    if (!gameState) return null;
+
+    return (
+      <View style={styles.lobbyContainer}>
+        <Text style={styles.lobbyTitle}>Room: {gameState.id}</Text>
+        <Text style={styles.playersTitle}>Players ({gameState.players.length}/4):</Text>
+        
+        {gameState.players.map((player, index) => (
+          <View key={player.id} style={styles.playerItem}>
+            <Text style={styles.playerName}>
+              {player.name} {player.type === 'mobile' ? '📱' : '💻'}
+            </Text>
+            <Text style={styles.playerScore}>Score: {player.score}</Text>
+          </View>
+        ))}
+
+        <View style={styles.lobbyActions}>
+          {gameState.players.length >= 2 ? (
+            <TouchableOpacity
+              style={styles.startButton}
+              onPress={handleStartGame}
+            >
+              <Text style={styles.buttonText}>🚀 Start Game</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={styles.waitingText}>
+              Waiting for more players... (Need at least 2)
+            </Text>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  const renderConnectionStatus = () => {
+    return (
+      <View style={styles.connectionStatus}>
+        <View style={[styles.statusDot, { backgroundColor: isConnected ? '#10b981' : '#ef4444' }]} />
+        <Text style={styles.statusText}>
+          {isConnected ? 'Connected to server' : 'Disconnected from server'}
+        </Text>
+      </View>
+    );
   };
 
   return (
@@ -45,48 +126,66 @@ export default function HomeScreen({ navigation }: Props) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>🎨 Pictionary Game</Text>
-        <Text style={styles.subtitle}>Draw and guess words with friends!</Text>
+        <Text style={styles.title}>🌐 Pictionary Multiplayer</Text>
+        <Text style={styles.subtitle}>Play with friends online!</Text>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Choose a word to draw:</Text>
-          <View style={styles.wordGrid}>
-            {WORDS.map((word, index) => (
+        {renderConnectionStatus()}
+
+        {gameState ? (
+          renderLobby()
+        ) : (
+          <View style={styles.setupContainer}>
+            <View style={styles.inputSection}>
+              <Text style={styles.inputLabel}>Your Name:</Text>
+              <TextInput
+                style={styles.textInput}
+                value={playerName}
+                onChangeText={setPlayerName}
+                placeholder="Enter your name"
+                placeholderTextColor="#9ca3af"
+                maxLength={20}
+              />
+            </View>
+
+            <View style={styles.actionsContainer}>
               <TouchableOpacity
-                key={index}
-                style={[
-                  styles.wordButton,
-                  selectedWord === word && styles.selectedWordButton
-                ]}
-                onPress={() => setSelectedWord(word)}
+                style={[styles.button, styles.createButton]}
+                onPress={handleCreateRoom}
+                disabled={isCreatingRoom}
               >
-                <Text style={[
-                  styles.wordText,
-                  selectedWord === word && styles.selectedWordText
-                ]}>
-                  {word}
+                <Text style={styles.buttonText}>
+                  {isCreatingRoom ? 'Creating...' : '🎮 Create Room'}
                 </Text>
               </TouchableOpacity>
-            ))}
+
+              <View style={styles.divider}>
+                <Text style={styles.dividerText}>OR</Text>
+              </View>
+
+              <View style={styles.joinSection}>
+                <Text style={styles.inputLabel}>Join existing room:</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={roomCode}
+                  onChangeText={(text) => setRoomCode(text.toUpperCase())}
+                  placeholder="Enter room code"
+                  placeholderTextColor="#9ca3af"
+                  maxLength={8}
+                  autoCapitalize="characters"
+                />
+                <TouchableOpacity
+                  style={[styles.button, styles.joinButton]}
+                  onPress={handleJoinRoom}
+                  disabled={isJoiningRoom}
+                >
+                  <Text style={styles.buttonText}>
+                    {isJoiningRoom ? 'Joining...' : '🔗 Join Room'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
-        </View>
-
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.button, styles.drawButton]}
-            onPress={handleStartDrawing}
-          >
-            
-            <Text style={styles.buttonText}>🎨 Start Drawing</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.button, styles.guessButton]}
-            onPress={handleStartGuessing}
-          >
-            <Text style={styles.buttonText}>🤔 Start Guessing</Text>
-          </TouchableOpacity>
-        </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -104,18 +203,8 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
-  animationContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  avatarButton: {
-    width: 200,
-    height: 200,
-    backgroundColor: 'transparent',
-    borderRadius: 100,
-  },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
     color: '#1e293b',
@@ -125,61 +214,150 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     color: '#64748b',
-    marginBottom: 40,
+    marginBottom: 30,
   },
-  section: {
-    marginBottom: 40,
+  connectionStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    padding: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  sectionTitle: {
-    fontSize: 18,
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  statusText: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  setupContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  inputSection: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 16,
-    textAlign: 'center',
+    marginBottom: 8,
   },
-  wordGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 8,
+  textInput: {
+    borderWidth: 2,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#f9fafb',
+    color: '#374151',
   },
-  wordButton: {
-    backgroundColor: '#e2e8f0',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    margin: 4,
-  },
-  selectedWordButton: {
-    backgroundColor: '#6366f1',
-  },
-  wordText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#475569',
-  },
-  selectedWordText: {
-    color: '#ffffff',
-  },
-  buttonContainer: {
+  actionsContainer: {
     gap: 16,
   },
   button: {
-    backgroundColor: '#6366f1',
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: 'center',
   },
-  drawButton: {
+  createButton: {
     backgroundColor: '#10b981',
   },
-  guessButton: {
-    backgroundColor: '#f59e0b',
+  joinButton: {
+    backgroundColor: '#6366f1',
+    marginTop: 12,
   },
   buttonText: {
     color: '#ffffff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
+  },
+  divider: {
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  dividerText: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  joinSection: {
+    marginTop: 8,
+  },
+  lobbyContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  lobbyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  playersTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  playerItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  playerName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  playerScore: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  lobbyActions: {
+    marginTop: 20,
+  },
+  startButton: {
+    backgroundColor: '#10b981',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  waitingText: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
