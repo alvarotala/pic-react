@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -34,9 +34,20 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const [currentPath, setCurrentPath] = useState<string>('');
   const [isDrawing, setIsDrawing] = useState(false);
   const lastPoint = useRef<Point | null>(null);
+  const updateTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Use external paths for multiplayer, internal paths for single player
   const paths = isMultiplayer ? (externalPaths || []) : internalPaths;
+
+  // Throttled update function for real-time drawing
+  const throttledUpdate = useCallback((newPaths: string[]) => {
+    if (updateTimeout.current) {
+      clearTimeout(updateTimeout.current);
+    }
+    updateTimeout.current = setTimeout(() => {
+      onPathsChange?.(newPaths);
+    }, 50); // Update every 50ms
+  }, [onPathsChange]);
 
   const createPath = (points: Point[]): string => {
     if (points.length === 0) return '';
@@ -67,6 +78,12 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           const newPath = currentPath + ` L${x},${y}`;
           setCurrentPath(newPath);
           lastPoint.current = point;
+          
+          // Send real-time updates during drawing for multiplayer
+          if (isMultiplayer) {
+            const tempPaths = [...paths, newPath];
+            throttledUpdate(tempPaths);
+          }
         }
         break;
 
@@ -98,6 +115,12 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     setCurrentPath('');
     setIsDrawing(false);
     onDrawingChange?.(false);
+    
+    // Clear any pending updates
+    if (updateTimeout.current) {
+      clearTimeout(updateTimeout.current);
+      updateTimeout.current = null;
+    }
   };
 
   const undoLastPath = () => {

@@ -20,19 +20,27 @@ interface Props {
 }
 
 export default function HomeScreen({ navigation }: Props) {
-  const { gameState, isConnected, connect, createRoom, joinRoom } = useSocket();
+  const { gameState, isConnected, connect, createRoom, startGame, roomError, clearRoomError } = useSocket();
   const [playerName, setPlayerName] = useState('');
-  const [roomCode, setRoomCode] = useState('');
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
-  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
 
   useEffect(() => {
-    if (gameState && gameState.gameState === 'drawing') {
+    if (gameState && gameState.gameState === 'word-selection') {
+      navigation.navigate('WordSelection');
+    } else if (gameState && gameState.gameState === 'drawing') {
       navigation.navigate('Drawing');
     } else if (gameState && gameState.gameState === 'waiting') {
       // Stay on this screen to show lobby
     }
   }, [gameState, navigation]);
+
+  // Handle room errors
+  useEffect(() => {
+    if (roomError) {
+      Alert.alert('Room Error', roomError);
+      clearRoomError();
+    }
+  }, [roomError, clearRoomError]);
 
   const handleCreateRoom = () => {
     if (!playerName.trim()) {
@@ -47,27 +55,10 @@ export default function HomeScreen({ navigation }: Props) {
     createRoom(playerName.trim());
   };
 
-  const handleJoinRoom = () => {
-    if (!playerName.trim()) {
-      Alert.alert('Enter your name', 'Please enter your name to join a room!');
-      return;
-    }
-    
-    if (!roomCode.trim()) {
-      Alert.alert('Enter room code', 'Please enter a room code to join!');
-      return;
-    }
-
-    setIsJoiningRoom(true);
-    if (!isConnected) {
-      connect();
-    }
-    joinRoom(roomCode.trim().toUpperCase(), playerName.trim());
-  };
 
   const handleStartGame = () => {
     if (gameState && gameState.players.length >= 2) {
-      navigation.navigate('Drawing');
+      startGame();
     } else {
       Alert.alert('Not enough players', 'You need at least 2 players to start the game!');
     }
@@ -126,8 +117,8 @@ export default function HomeScreen({ navigation }: Props) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>🌐 Pictionary Multiplayer</Text>
-        <Text style={styles.subtitle}>Play with friends online!</Text>
+        <Text style={styles.title}>📱 Pictionary Mobile</Text>
+        <Text style={styles.subtitle}>Create rooms and draw for web players!</Text>
 
         {renderConnectionStatus()}
 
@@ -158,30 +149,10 @@ export default function HomeScreen({ navigation }: Props) {
                 </Text>
               </TouchableOpacity>
 
-              <View style={styles.divider}>
-                <Text style={styles.dividerText}>OR</Text>
-              </View>
-
-              <View style={styles.joinSection}>
-                <Text style={styles.inputLabel}>Join existing room:</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={roomCode}
-                  onChangeText={(text) => setRoomCode(text.toUpperCase())}
-                  placeholder="Enter room code"
-                  placeholderTextColor="#9ca3af"
-                  maxLength={8}
-                  autoCapitalize="characters"
-                />
-                <TouchableOpacity
-                  style={[styles.button, styles.joinButton]}
-                  onPress={handleJoinRoom}
-                  disabled={isJoiningRoom}
-                >
-                  <Text style={styles.buttonText}>
-                    {isJoiningRoom ? 'Joining...' : '🔗 Join Room'}
-                  </Text>
-                </TouchableOpacity>
+              <View style={styles.infoSection}>
+                <Text style={styles.infoText}>
+                  💡 Share the room code with web players so they can join and guess your drawings!
+                </Text>
               </View>
             </View>
           </View>
@@ -281,26 +252,24 @@ const styles = StyleSheet.create({
   createButton: {
     backgroundColor: '#10b981',
   },
-  joinButton: {
-    backgroundColor: '#6366f1',
-    marginTop: 12,
-  },
   buttonText: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
   },
-  divider: {
-    alignItems: 'center',
-    marginVertical: 8,
+  infoSection: {
+    backgroundColor: '#f0f9ff',
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+    borderRadius: 8,
+    padding: 16,
+    marginTop: 16,
   },
-  dividerText: {
+  infoText: {
     fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  joinSection: {
-    marginTop: 8,
+    color: '#0369a1',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   lobbyContainer: {
     backgroundColor: '#ffffff',

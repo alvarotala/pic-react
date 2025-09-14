@@ -15,7 +15,7 @@ interface GameState {
   players: Player[];
   currentWord: string;
   currentDrawer: string | null;
-  gameState: 'waiting' | 'drawing' | 'guessing' | 'finished' | 'game-over';
+  gameState: 'waiting' | 'word-selection' | 'drawing' | 'guessing' | 'finished' | 'game-over';
   drawingData: any;
   guesses: Array<{
     playerId: string;
@@ -103,10 +103,15 @@ function App() {
       console.log('Game started');
     });
 
+    newSocket.on('word-selected', (state: GameState) => {
+      setGameState(state);
+      setCurrentScreen(state.currentDrawer === playerId ? 'drawing' : 'guessing');
+      console.log('Word selected, starting drawing phase');
+    });
+
     newSocket.on('drawing-update', (drawingData: any) => {
-      if (gameState) {
-        setGameState(prev => prev ? { ...prev, drawingData } : null);
-      }
+      console.log('Received drawing update:', drawingData);
+      setGameState(prev => prev ? { ...prev, drawingData } : null);
     });
 
     newSocket.on('guess-submitted', (guessData: any) => {
@@ -135,7 +140,24 @@ function App() {
       setCurrentScreen('guessing');
       console.log('Game over');
     });
+
+    newSocket.on('room-creation-denied', (message: string) => {
+      alert(message);
+    });
+
+    newSocket.on('game-start-denied', (message: string) => {
+      alert(message);
+    });
+
+    newSocket.on('drawing-denied', (message: string) => {
+      alert(message);
+    });
   };
+
+  // Auto-connect on component mount
+  useEffect(() => {
+    connect();
+  }, []);
 
   useEffect(() => {
     if (gameState?.guesses) {
@@ -150,19 +172,9 @@ function App() {
     }
   }, [gameState?.guesses]);
 
+  // Room creation is only available on mobile devices
   const createRoom = () => {
-    if (!playerName.trim()) {
-      alert('Please enter your name!');
-      return;
-    }
-
-    if (!socket) {
-      connect();
-    }
-    
-    if (socket && playerName.trim()) {
-      socket.emit('create-room', playerName.trim(), 'web');
-    }
+    alert('Room creation is only available on mobile devices. Please use the mobile app to create a room.');
   };
 
   const joinRoom = () => {
@@ -176,21 +188,16 @@ function App() {
       return;
     }
 
-    if (!socket) {
-      connect();
-    }
-    
-    if (socket && playerName.trim() && roomCode.trim()) {
+    if (socket && isConnected && playerName.trim() && roomCode.trim()) {
       socket.emit('join-room', roomCode.trim().toUpperCase(), playerName.trim(), 'web');
+    } else {
+      alert('Please wait for connection to establish...');
     }
   };
 
+  // Game starting is only available on mobile devices
   const startGame = () => {
-    if (socket && gameState && gameState.players.length >= 2) {
-      socket.emit('start-game', gameState.id);
-    } else {
-      alert('You need at least 2 players to start the game!');
-    }
+    alert('Only the mobile app can start the game. Please ask the room creator to start the game.');
   };
 
   const submitGuess = () => {
@@ -227,24 +234,27 @@ function App() {
         </div>
 
         <div className="button-group">
-          <button className="btn btn-primary" onClick={createRoom}>
-            🎮 Create Room
-          </button>
-          
-          <div className="divider">OR</div>
-          
           <div className="join-section">
-            <label>Join existing room:</label>
-            <input
-              type="text"
-              value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-              placeholder="Enter room code"
-              maxLength={8}
-            />
-            <button className="btn btn-secondary" onClick={joinRoom}>
+            <div className="input-group">
+              <label>Join existing room:</label>
+              <input
+                type="text"
+                value={roomCode}
+                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                placeholder="Enter room code"
+                maxLength={8}
+              />
+            </div>
+            <button className="btn btn-primary" onClick={joinRoom}>
               🔗 Join Room
             </button>
+          </div>
+          
+          <div className="info-section">
+            <p className="info-text">
+              💡 <strong>Note:</strong> Only mobile devices can create rooms. 
+              Ask a friend with the mobile app to create a room and share the room code with you!
+            </p>
           </div>
         </div>
       </div>
@@ -275,9 +285,14 @@ function App() {
 
         <div className="lobby-actions">
           {gameState && gameState.players.length >= 2 ? (
-            <button className="btn btn-success" onClick={startGame}>
-              🚀 Start Game
-            </button>
+            <div className="waiting-section">
+              <p className="waiting-text">
+                ✅ Ready to start! Waiting for the mobile app user to start the game...
+              </p>
+              <p className="info-text">
+                💡 Only mobile devices can start the game. Ask the room creator to start!
+              </p>
+            </div>
           ) : (
             <p className="waiting-text">Waiting for more players... (Need at least 2)</p>
           )}
@@ -298,8 +313,36 @@ function App() {
 
       <div className="drawing-area">
         <div className="drawing-canvas">
-          <p>🎨 Drawing Canvas</p>
-          <p>Use your mobile device to draw!</p>
+          <svg 
+            width="100%" 
+            height="300" 
+            style={{ border: '2px dashed #e2e8f0', backgroundColor: '#f8fafc' }}
+          >
+            {gameState?.drawingData?.paths?.map((path: string, index: number) => (
+              <path
+                key={index}
+                d={path}
+                stroke="#000000"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            ))}
+            {!gameState?.drawingData?.paths?.length && (
+              <g>
+                <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" fontSize="24" fill="#6b7280">
+                  🎨 Drawing Canvas
+                </text>
+                <text x="50%" y="60%" textAnchor="middle" dominantBaseline="middle" fontSize="16" fill="#9ca3af">
+                  📱 Use your mobile device to draw!
+                </text>
+                <text x="50%" y="70%" textAnchor="middle" dominantBaseline="middle" fontSize="14" fill="#9ca3af">
+                  💡 Web clients can only watch and guess. Only mobile devices can draw!
+                </text>
+              </g>
+            )}
+          </svg>
         </div>
       </div>
 
@@ -329,8 +372,33 @@ function App() {
 
       <div className="drawing-area">
         <div className="drawing-canvas">
-          <p>🎨 Drawing in progress...</p>
-          <p>Watch the drawing and make your guess!</p>
+          <svg 
+            width="100%" 
+            height="300" 
+            style={{ border: '2px dashed #e2e8f0', backgroundColor: '#f8fafc' }}
+          >
+            {gameState?.drawingData?.paths?.map((path: string, index: number) => (
+              <path
+                key={index}
+                d={path}
+                stroke="#000000"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            ))}
+            {!gameState?.drawingData?.paths?.length && (
+              <g>
+                <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" fontSize="24" fill="#6b7280">
+                  🎨 Drawing in progress...
+                </text>
+                <text x="50%" y="60%" textAnchor="middle" dominantBaseline="middle" fontSize="16" fill="#9ca3af">
+                  Watch the drawing and make your guess!
+                </text>
+              </g>
+            )}
+          </svg>
         </div>
       </div>
 

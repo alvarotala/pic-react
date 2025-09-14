@@ -34,7 +34,7 @@ export default function DrawingScreen({ navigation }: Props) {
           setCurrentPaths(gameState.drawingData.paths);
         }
       } else if (gameState.gameState === 'finished' || gameState.gameState === 'game-over') {
-        navigation.navigate('Guessing');
+        navigation.navigate('Home');
       }
     }
   }, [gameState, navigation]);
@@ -48,6 +48,7 @@ export default function DrawingScreen({ navigation }: Props) {
     
     // Send drawing data to server if this player is the drawer
     if (gameState?.currentDrawer === playerId) {
+      console.log('Sending drawing data:', { paths });
       sendDrawingData({ paths });
     }
   };
@@ -64,18 +65,46 @@ export default function DrawingScreen({ navigation }: Props) {
     );
   }
 
+  // If not the current drawer, show waiting message
+  if (!isCurrentDrawer) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.waitingContainer}>
+          <Text style={styles.waitingTitle}>Waiting for your turn...</Text>
+          <Text style={styles.waitingText}>
+            {gameState.players.find(p => p.id === gameState.currentDrawer)?.name} is drawing
+          </Text>
+          <Text style={styles.waitingSubtext}>
+            Web players are guessing the drawing!
+          </Text>
+          <View style={styles.playersList}>
+            <Text style={styles.playersTitle}>Players:</Text>
+            {gameState.players.map((player) => (
+              <View key={player.id} style={styles.playerItem}>
+                <Text style={styles.playerName}>
+                  {player.name} {player.isDrawing ? '🎨' : '👀'}
+                </Text>
+                <Text style={styles.playerScore}>{player.score} pts</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.wordText}>
-          {isCurrentDrawer ? `Draw: ${gameState.currentWord}` : 'Watch the drawing!'}
+          Draw: {gameState.currentWord}
         </Text>
         <Text style={styles.timerText}>Time: {gameState.timeLeft}s</Text>
       </View>
 
       <View style={styles.playerInfo}>
         <Text style={styles.drawerText}>
-          {isCurrentDrawer ? 'You are drawing!' : `${gameState.players.find(p => p.id === gameState.currentDrawer)?.name} is drawing`}
+          You are drawing! Web players are guessing.
         </Text>
         <Text style={styles.roundText}>
           Round {gameState.rounds}/{gameState.maxRounds}
@@ -93,27 +122,14 @@ export default function DrawingScreen({ navigation }: Props) {
         />
       </View>
 
-      {isCurrentDrawer && (
-        <View style={styles.instructions}>
-          <Text style={styles.instructionText}>
-            Draw: {gameState.currentWord}
-          </Text>
-          <Text style={styles.instructionSubtext}>
-            Other players are trying to guess your drawing!
-          </Text>
-        </View>
-      )}
-
-      {!isCurrentDrawer && (
-        <View style={styles.guessingInfo}>
-          <Text style={styles.guessingText}>
-            Try to guess what's being drawn!
-          </Text>
-          <Text style={styles.guessingSubtext}>
-            You'll get points for correct guesses
-          </Text>
-        </View>
-      )}
+      <View style={styles.instructions}>
+        <Text style={styles.instructionText}>
+          Draw: {gameState.currentWord}
+        </Text>
+        <Text style={styles.instructionSubtext}>
+          Web players are trying to guess your drawing!
+        </Text>
+      </View>
 
       <View style={styles.playersList}>
         <Text style={styles.playersTitle}>Players:</Text>
@@ -143,6 +159,31 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 18,
     color: '#6b7280',
+  },
+  waitingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  waitingTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  waitingText: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  waitingSubtext: {
+    fontSize: 14,
+    color: '#9ca3af',
+    textAlign: 'center',
+    marginBottom: 30,
   },
   header: {
     flexDirection: 'row',
@@ -208,22 +249,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   instructionSubtext: {
-    fontSize: 14,
-    color: '#ffffff',
-    opacity: 0.9,
-  },
-  guessingInfo: {
-    padding: 16,
-    backgroundColor: '#6366f1',
-    alignItems: 'center',
-  },
-  guessingText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 4,
-  },
-  guessingSubtext: {
     fontSize: 14,
     color: '#ffffff',
     opacity: 0.9,

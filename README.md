@@ -1,21 +1,22 @@
 # Pictionary Multiplayer Game
 
-A real-time multiplayer Pictionary game where mobile users can play with web users. Built with React Native (Expo), React (web client), and Socket.IO for real-time communication.
+A real-time multiplayer Pictionary game where mobile users create rooms and draw while web users join and guess. Built with React Native (Expo), React (web client), and Socket.IO for real-time communication.
 
-## Features
+## Game Roles
 
-### Mobile App (React Native)
-- **Real-time Multiplayer**: Online gameplay with web users
+### Mobile App (React Native) - HOST & DRAWER
+- **Room Creation**: Create game rooms and share room codes
+- **Word Selection**: Choose what to draw from categorized word lists
 - **Interactive Drawing**: Touch-based drawing with undo/clear functionality
-- **Real-time Sync**: Drawings are synchronized across all players
-- **Game Rooms**: Create or join rooms with room codes
-- **Scoring System**: Points for drawing and guessing correctly
+- **Real-time Sync**: Drawings are synchronized to web players
+- **Game Management**: Start games and control the flow
 
-### Web Client (React)
-- **Cross-platform Play**: Desktop users can play with mobile users
-- **Real-time Updates**: Live drawing updates and guess submissions
+### Web Client (React) - GUESSER
+- **Room Joining**: Join rooms using codes shared by mobile users
+- **Real-time Watching**: See drawings as they're created in real-time
+- **Guessing Interface**: Submit guesses for the drawings
 - **Responsive Design**: Works on desktop and tablet browsers
-- **Game Lobby**: Join rooms and manage multiplayer sessions
+- **Scoring**: Earn points for correct guesses
 
 ### Backend Server (Node.js + Socket.IO)
 - **Real-time Communication**: WebSocket-based real-time updates
@@ -30,11 +31,29 @@ A real-time multiplayer Pictionary game where mobile users can play with web use
 │   Mobile App    │    │   Web Client    │    │  Backend Server │
 │  (React Native) │    │     (React)     │    │  (Node.js +     │
 │                 │◄──►│                 │◄──►│   Socket.IO)    │
-│ • Drawing       │    │ • Guessing      │    │                 │
-│ • Touch Input   │    │ • Keyboard      │    │ • Game Rooms    │
-│ • Real-time     │    │ • Real-time     │    │ • Drawing Sync  │
+│ • HOST & DRAWER │    │ • GUESSER ONLY  │    │                 │
+│ • Create Rooms  │    │ • Join Rooms    │    │ • Game Rooms    │
+│ • Select Words  │    │ • Watch & Guess │    │ • Drawing Sync  │
+│ • Draw Always   │    │ • Never Draws   │    │ • Role Enforced │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
+
+## How to Play
+
+### Game Flow
+1. **Mobile user creates room** → Gets a room code to share
+2. **Web users join room** → Enter the room code to join
+3. **Mobile user starts game** → Selects a word from categories
+4. **Mobile user draws** → Creates drawing in real-time
+5. **Web users guess** → Submit guesses for the drawing
+6. **Scoring** → Points awarded for correct guesses
+7. **Next round** → Mobile user selects new word and draws again
+
+### Key Rules
+- **Mobile = Always Drawer**: Mobile users never guess, only draw
+- **Web = Always Guesser**: Web users never draw, only guess
+- **No Role Exchange**: Roles are fixed throughout the entire game
+- **Mobile Controls Game**: Only mobile users can create rooms and start games
 
 ## Getting Started
 

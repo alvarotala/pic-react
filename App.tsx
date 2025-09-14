@@ -7,13 +7,13 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { SocketProvider } from './src/context/SocketContext';
 import HomeScreen from './src/screens/HomeScreen';
+import WordSelectionScreen from './src/screens/WordSelectionScreen';
 import DrawingScreen from './src/screens/DrawingScreen';
-import GuessingScreen from './src/screens/GuessingScreen';
 
 export type RootStackParamList = {
   Home: undefined;
+  WordSelection: undefined;
   Drawing: undefined;
-  Guessing: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -40,17 +40,17 @@ export default function App() {
               <Stack.Screen 
                 name="Home" 
                 component={HomeScreen} 
-                options={{ title: 'Pictionary Multiplayer' }}
+                options={{ title: 'Pictionary Mobile' }}
+              />
+              <Stack.Screen 
+                name="WordSelection" 
+                component={WordSelectionScreen} 
+                options={{ title: 'Select Word' }}
               />
               <Stack.Screen 
                 name="Drawing" 
                 component={DrawingScreen} 
                 options={{ title: 'Drawing' }}
-              />
-              <Stack.Screen 
-                name="Guessing" 
-                component={GuessingScreen} 
-                options={{ title: 'Guessing' }}
               />
             </Stack.Navigator>
           </NavigationContainer>

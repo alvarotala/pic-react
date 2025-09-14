@@ -15,7 +15,7 @@ interface GameState {
   players: Player[];
   currentWord: string;
   currentDrawer: string | null;
-  gameState: 'waiting' | 'drawing' | 'guessing' | 'finished' | 'game-over';
+  gameState: 'waiting' | 'word-selection' | 'drawing' | 'guessing' | 'finished' | 'game-over';
   drawingData: any;
   guesses: Array<{
     playerId: string;
@@ -37,13 +37,16 @@ interface SocketContextType {
   playerName: string | null;
   playerType: 'mobile' | 'web' | null;
   roomId: string | null;
+  roomError: string | null;
   connect: () => void;
   createRoom: (playerName: string) => void;
   joinRoom: (roomId: string, playerName: string) => void;
   startGame: () => void;
+  selectWord: (word: string) => void;
   sendDrawingData: (drawingData: any) => void;
   submitGuess: (guess: string) => void;
   disconnect: () => void;
+  clearRoomError: () => void;
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -58,6 +61,7 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [playerName, setPlayerName] = useState<string | null>(null);
   const [playerType] = useState<'mobile' | 'web'>('mobile');
   const [roomId, setRoomId] = useState<string | null>(null);
+  const [roomError, setRoomError] = useState<string | null>(null);
 
   const connect = () => {
     if (socket) {
@@ -74,7 +78,7 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     newSocket.on('connect', () => {
       setIsConnected(true);
-      setPlayerId(newSocket.id);
+      setPlayerId(newSocket.id || null);
       console.log('✅ Connected to server:', newSocket.id);
     });
 
@@ -101,10 +105,12 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     newSocket.on('room-not-found', () => {
       console.log('Room not found');
+      setRoomError('Room not found!');
     });
 
     newSocket.on('room-full', () => {
       console.log('Room is full');
+      setRoomError('Room is full!');
     });
 
     newSocket.on('player-joined', (state: GameState) => {
@@ -120,6 +126,11 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     newSocket.on('game-started', (state: GameState) => {
       setGameState(state);
       console.log('Game started');
+    });
+
+    newSocket.on('word-selected', (state: GameState) => {
+      setGameState(state);
+      console.log('Word selected, starting drawing phase');
     });
 
     newSocket.on('drawing-update', (drawingData: any) => {
@@ -152,34 +163,41 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setGameState(state);
       console.log('Game over');
     });
+
+    newSocket.on('game-start-denied', (message: string) => {
+      console.log('Game start denied:', message);
+      setRoomError(message);
+    });
   };
 
   const createRoom = (name: string) => {
-    if (!socket) {
-      connect();
-    }
-    
     if (socket && isConnected) {
       setPlayerName(name);
       socket.emit('create-room', name, playerType);
+    } else {
+      console.log('Please wait for connection to establish...');
     }
   };
 
   const joinRoom = (roomId: string, name: string) => {
-    if (!socket) {
-      connect();
-    }
-    
     if (socket && isConnected) {
       setPlayerName(name);
       setRoomId(roomId);
       socket.emit('join-room', roomId, name, playerType);
+    } else {
+      console.log('Please wait for connection to establish...');
     }
   };
 
   const startGame = () => {
     if (socket && roomId) {
       socket.emit('start-game', roomId);
+    }
+  };
+
+  const selectWord = (word: string) => {
+    if (socket && roomId) {
+      socket.emit('select-word', roomId, word);
     }
   };
 
@@ -204,6 +222,15 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
+  const clearRoomError = () => {
+    setRoomError(null);
+  };
+
+  // Auto-connect on component mount
+  useEffect(() => {
+    connect();
+  }, []);
+
   return (
     <SocketContext.Provider
       value={{
@@ -214,13 +241,16 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         playerName,
         playerType,
         roomId,
+        roomError,
         connect,
         createRoom,
         joinRoom,
         startGame,
+        selectWord,
         sendDrawingData,
         submitGuess,
         disconnect,
+        clearRoomError,
       }}
     >
       {children}

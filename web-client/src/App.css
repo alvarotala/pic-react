@@ -87,7 +87,7 @@
 .button-group {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .btn {
@@ -151,11 +151,58 @@
   text-align: center;
   color: #6b7280;
   font-weight: 500;
-  margin: 8px 0;
+  margin: 12px 0;
+  position: relative;
+  background-color: #f8fafc;
+  padding: 0 20px;
+  z-index: 2;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #e2e8f0;
+  z-index: 1;
 }
 
 .join-section {
   margin-top: 16px;
+}
+
+.join-section .input-group {
+  margin-bottom: 12px;
+}
+
+.join-section .btn {
+  width: 100%;
+}
+
+.info-section {
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.info-text {
+  font-size: 0.9rem;
+  color: #0369a1;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.waiting-section {
+  text-align: center;
+}
+
+.waiting-section .info-text {
+  margin-top: 8px;
+  font-size: 0.85rem;
 }
 
 .lobby-header {
@@ -404,6 +451,18 @@
   
   .header h1 {
     font-size: 2rem;
+  }
+  
+  .setup-form {
+    padding: 20px;
+  }
+  
+  .button-group {
+    gap: 16px;
+  }
+  
+  .join-section .btn {
+    margin-top: 8px;
   }
   
   .game-header {
