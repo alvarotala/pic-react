@@ -69,6 +69,7 @@ class GameRoom {
     if (this.players.size < 2) return false;
     
     this.rounds++;
+    console.log(`🔔 Server: startNewRound - rounds incremented to: ${this.rounds}/${this.maxRounds}`);
     this.currentWord = '';
     
     // Mobile is ALWAYS the drawer - find the mobile player
@@ -419,13 +420,20 @@ io.on('connection', (socket) => {
     // Only host (mobile creator) can continue
     if (socket.id !== room.hostId) return;
 
+    console.log(`🔔 Server: continue-next-round - current rounds: ${room.rounds}/${room.maxRounds}`);
+    
     // If game over threshold reached, finish
     if (room.rounds >= room.maxRounds) {
+      console.log(`🔔 Server: Game over reached - ${room.rounds}/${room.maxRounds}`);
       room.gameState = 'game-over';
       io.to(normalizedRoomId).emit('game-over', room.getGameState());
       return;
     }
 
+    // Increment round counter for next round
+    room.rounds++;
+    console.log(`🔔 Server: Incremented rounds to: ${room.rounds}/${room.maxRounds}`);
+    
     // Clear drawing data, unlock round, and change to word-selection state
     room.drawingData = null;
     room.roundLocked = false;
