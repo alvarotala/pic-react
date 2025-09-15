@@ -37,16 +37,19 @@ export default function WordSelectionScreen({ navigation }: Props) {
   useEffect(() => {
     const phase = gameState?.gameState || null;
     if (!phase) return;
-    // Only navigate when this screen is focused (top of stack)
     if (!isFocused) return;
-    // If we are showing RoundSummary (lastCorrectGuess present), do not navigate away automatically
+    
+    // Don't navigate if we have a correct guess (showing round summary)
     if (lastCorrectGuess && phase !== 'game-over' && phase !== 'waiting') {
-      console.log('WordSelectionScreen: Skipping navigation due to lastCorrectGuess present');
+      console.log('WordSelectionScreen: Skipping navigation due to round summary being shown');
       return;
     }
+    
+    // Only navigate on actual phase changes
     if (prevPhaseRef.current === phase) return;
 
-    console.log('WordSelectionScreen: Navigating due to phase change:', phase);
+    console.log('WordSelectionScreen: Phase change from', prevPhaseRef.current, 'to', phase);
+
     if (phase === 'waiting') {
       navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
     } else if (phase === 'drawing') {

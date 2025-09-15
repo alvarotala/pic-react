@@ -29,27 +29,37 @@ export default function DrawingScreen({ navigation }: Props) {
   const prevPhaseRef = useRef<string | null>(null);
   const navigatedToSummaryRef = useRef(false);
   const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   useEffect(() => {
     const phase = gameState?.gameState || null;
     if (!phase) return;
     if (!isFocused) return;
-    if (prevPhaseRef.current === phase) {
-      // Still update drawing data each tick
-      if (phase === 'drawing' && gameState?.drawingData?.paths) {
-        setCurrentPaths(gameState.drawingData.paths);
-      }
-      return;
-    }
-
-    if (phase === 'waiting') {
-      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
-    } else if (phase === 'drawing') {
+    
+    // Update drawing data based on phase and server data
+    if (phase === 'drawing') {
       if (gameState?.drawingData?.paths) {
         setCurrentPaths(gameState.drawingData.paths);
+      } else {
+        // Clear paths if no drawing data (new round)
+        setCurrentPaths([]);
       }
+    } else if (phase === 'word-selection') {
+      // Clear paths when starting word selection (new round)
+      setCurrentPaths([]);
+    }
+    
+    // Only navigate on phase changes, not on every render
+    if (prevPhaseRef.current === phase) return;
+
+    console.log('DrawingScreen: Phase change from', prevPhaseRef.current, 'to', phase);
+
+    // Simple navigation logic
+    if (phase === 'waiting') {
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
     } else if (phase === 'game-over') {
       navigation.replace('GameOver');
     }
+    // Don't navigate for other states - let correct guess handle navigation
 
     prevPhaseRef.current = phase;
   }, [gameState?.gameState, gameState?.drawingData, navigation, isFocused]);
@@ -74,28 +84,23 @@ export default function DrawingScreen({ navigation }: Props) {
     };
   }, []);
 
-  // If a correct guess is received, show summary immediately exactly once
+  // Navigate to round summary when correct guess is received - IMMEDIATE
   useEffect(() => {
+    console.log('DrawingScreen: useEffect triggered - lastCorrectGuess:', !!lastCorrectGuess, 'navigatedToSummaryRef:', navigatedToSummaryRef.current, 'isFocused:', isFocused);
+    
     if (lastCorrectGuess && !navigatedToSummaryRef.current && isFocused) {
-      console.log('Navigating to RoundSummary due to correct guess');
+      console.log('DrawingScreen: ✅ Correct guess received, navigating to RoundSummary IMMEDIATELY');
+      console.log('DrawingScreen: Correct guess data:', lastCorrectGuess);
       navigatedToSummaryRef.current = true;
       
-      // Clear any existing timeout
-      if (navigationTimeoutRef.current) {
-        clearTimeout(navigationTimeoutRef.current);
-      }
-      
-      // Add a small delay to prevent rapid navigation calls
-      navigationTimeoutRef.current = setTimeout(() => {
-        navigation.replace('RoundSummary');
-      }, 100);
+      // Navigate IMMEDIATELY - no delays, no timeouts
+      navigation.replace('RoundSummary');
     }
-    if (!lastCorrectGuess) {
+    
+    // Reset navigation flag when correct guess is cleared
+    if (!lastCorrectGuess && navigatedToSummaryRef.current) {
+      console.log('DrawingScreen: Correct guess cleared, resetting navigation flag');
       navigatedToSummaryRef.current = false;
-      if (navigationTimeoutRef.current) {
-        clearTimeout(navigationTimeoutRef.current);
-        navigationTimeoutRef.current = null;
-      }
     }
   }, [lastCorrectGuess, navigation, isFocused]);
 
@@ -134,7 +139,8 @@ export default function DrawingScreen({ navigation }: Props) {
 
   const isCurrentDrawer = gameState?.currentDrawer === playerId;
 
-  if (!gameState || gameState.gameState !== 'drawing') {
+  // Show loading only if we don't have game state at all
+  if (!gameState) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -142,6 +148,19 @@ export default function DrawingScreen({ navigation }: Props) {
         </View>
       </SafeAreaView>
     );
+  }
+
+  // If we have a correct guess, navigate immediately - don't show loading
+  if (lastCorrectGuess) {
+    // This useEffect will handle navigation
+    return null; // Don't render anything while navigating
+  }
+
+  // If we're not in drawing state and no correct guess, something is wrong
+  if (gameState.gameState !== 'drawing') {
+    console.log('DrawingScreen: Unexpected state - not drawing and no correct guess');
+    // Don't show loading, just let the useEffect handle navigation
+    return null;
   }
 
   // If not the current drawer, show waiting message

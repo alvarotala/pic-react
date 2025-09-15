@@ -103,6 +103,12 @@ function App() {
       console.log('Game started, waiting for word selection');
     });
 
+    newSocket.on('next-round-started', (state: GameState) => {
+      setGameState(state);
+      setCurrentScreen('waiting-for-word');
+      console.log('Next round started, waiting for word selection');
+    });
+
     newSocket.on('word-selected', (state: GameState) => {
       setGameState(state);
       setCurrentScreen(state.currentDrawer === playerId ? 'drawing' : 'guessing');
@@ -128,10 +134,16 @@ function App() {
       setGameState(prev => (prev ? { ...prev, timeLeft } : prev));
     });
 
-    newSocket.on('round-ended', (state: GameState) => {
+    newSocket.on('round-finished', (state: GameState) => {
       setGameState(state);
       setCurrentScreen('waiting-for-word');
-      console.log('Round ended - waiting for next round');
+      console.log('Round finished - waiting for next word selection');
+    });
+
+    newSocket.on('continue-to-word-selection', (state: GameState) => {
+      setGameState(state);
+      setCurrentScreen('waiting-for-word');
+      console.log('Continue to word selection - waiting for mobile to select word');
     });
 
     newSocket.on('game-over', (state: GameState) => {

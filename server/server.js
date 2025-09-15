@@ -244,6 +244,10 @@ io.on('connection', (socket) => {
 
     room.currentWord = word;
     room.gameState = 'drawing';
+    
+    // Clear previous drawing data for new round
+    room.drawingData = null;
+    
     console.log(`Word selected: ${word}, starting drawing phase for room ${normalizedRoomId}`);
     io.to(normalizedRoomId).emit('word-selected', room.getGameState());
     startGameTimer(normalizedRoomId);
@@ -307,16 +311,19 @@ io.on('connection', (socket) => {
       
       // Lock round to prevent duplicate winners
       room.roundLocked = true;
-      io.to(normalizedRoomId).emit('correct-guess', guessData, room.getGameState());
-
-      // Schedule round end (single, due to lock)
-      if (room.roundEndTimeout) {
-        clearTimeout(room.roundEndTimeout);
-        room.roundEndTimeout = null;
+      
+      // Stop timer immediately
+      if (room.timer) {
+        clearInterval(room.timer);
+        room.timer = null;
       }
-      room.roundEndTimeout = setTimeout(() => {
-        endRound(normalizedRoomId);
-      }, 2000);
+      
+      // Emit correct guess FIRST with current state (still 'drawing')
+      io.to(normalizedRoomId).emit('correct-guess', guessData, room.getGameState());
+      
+      // THEN change state to finished and emit round-finished
+      room.gameState = 'finished';
+      io.to(normalizedRoomId).emit('round-finished', room.getGameState());
     } else {
       io.to(normalizedRoomId).emit('guess-submitted', guessData);
     }
@@ -369,27 +376,20 @@ function startGameTimer(roomId) {
   }, 1000);
 }
 
-// End round function
+// End round function - simplified
 function endRound(roomId) {
   const normalizedRoomId = roomId.toLowerCase();
   const room = gameRooms.get(normalizedRoomId);
   if (!room) return;
 
-  // Ensure timer is stopped at round end
+  // Stop timer
   if (room.timer) {
     clearInterval(room.timer);
     room.timer = null;
   }
 
-  // Clear any pending round-end timeout
-  if (room.roundEndTimeout) {
-    clearTimeout(room.roundEndTimeout);
-    room.roundEndTimeout = null;
-  }
-
   room.gameState = 'finished';
   io.to(normalizedRoomId).emit('round-ended', room.getGameState());
-  // Do NOT auto-start next round; wait for host to trigger continue-next-round
 }
 
 // Fast-forward to next round immediately (host action)
@@ -399,13 +399,8 @@ io.on('connection', (socket) => {
     const room = gameRooms.get(normalizedRoomId);
     if (!room) return;
 
-    // Only host (mobile creator) can continue immediately
+    // Only host (mobile creator) can continue
     if (socket.id !== room.hostId) return;
-
-    // Stop timers and pending timeouts
-    if (room.timer) { clearInterval(room.timer); room.timer = null; }
-    if (room.roundEndTimeout) { clearTimeout(room.roundEndTimeout); room.roundEndTimeout = null; }
-    if (room.nextRoundTimeout) { clearTimeout(room.nextRoundTimeout); room.nextRoundTimeout = null; }
 
     // If game over threshold reached, finish
     if (room.rounds >= room.maxRounds) {
@@ -414,11 +409,10 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Start next round now
-    if (room.startNewRound()) {
-      io.to(normalizedRoomId).emit('game-started', room.getGameState());
-      startGameTimer(normalizedRoomId);
-    }
+    // Clear drawing data and change to word-selection state
+    room.drawingData = null;
+    room.gameState = 'word-selection';
+    io.to(normalizedRoomId).emit('continue-to-word-selection', room.getGameState());
   });
 });
 

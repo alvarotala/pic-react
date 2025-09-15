@@ -15,7 +15,7 @@ interface GameState {
   players: Player[];
   currentWord: string;
   currentDrawer: string | null;
-  gameState: 'waiting' | 'word-selection' | 'drawing' | 'guessing' | 'finished' | 'game-over';
+  gameState: 'waiting' | 'word-selection' | 'drawing' | 'finished' | 'game-over';
   drawingData: any;
   guesses: Array<{
     playerId: string;
@@ -150,15 +150,19 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
 
     newSocket.on('correct-guess', (guessData: any, state: GameState) => {
+      console.log('🔔 SocketContext: correct-guess event received');
+      console.log('🔔 guessData:', guessData);
+      console.log('🔔 state:', state);
+      
       setGameState(state);
       const timeElapsedSeconds = Math.max(0, 60 - (state?.timeLeft ?? 0));
       // Only set lastCorrectGuess if not already set to avoid multiple triggers
       setLastCorrectGuess(prev => {
         if (prev) {
-          console.log('Correct guess already set, ignoring duplicate');
+          console.log('🔔 Correct guess already set, ignoring duplicate');
           return prev;
         }
-        console.log('Setting correct guess:', guessData);
+        console.log('🔔 ✅ Setting correct guess:', guessData);
         return {
           playerName: guessData.playerName,
           guess: guessData.guess,
@@ -171,9 +175,14 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setGameState(prev => (prev ? { ...prev, timeLeft } : prev));
     });
 
-    newSocket.on('round-ended', (state: GameState) => {
+    newSocket.on('round-finished', (state: GameState) => {
       setGameState(state);
-      console.log('Round ended');
+      console.log('Round finished');
+    });
+
+    newSocket.on('continue-to-word-selection', (state: GameState) => {
+      setGameState(state);
+      console.log('Continue to word selection');
     });
 
     newSocket.on('game-over', (state: GameState) => {

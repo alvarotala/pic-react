@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../App';
 import { useSocket } from '../context/SocketContext';
@@ -12,6 +13,7 @@ interface Props {
 
 export default function RoundSummaryScreen({ navigation }: Props) {
   const { lastCorrectGuess, continueNextRound, cancelGame, gameState, clearCorrectGuess } = useSocket();
+  const isFocused = useIsFocused();
   const isContinuingRef = useRef(false);
 
   useLayoutEffect(() => {
@@ -42,10 +44,13 @@ export default function RoundSummaryScreen({ navigation }: Props) {
     };
   }, [clearCorrectGuess]);
 
-  // Explicitly ignore phase changes until Continue is pressed
+  // Handle continue-to-word-selection event
   useEffect(() => {
-    // No navigation side-effect here; we only navigate on Continue
-  }, [gameState]);
+    if (gameState?.gameState === 'word-selection' && isFocused) {
+      console.log('RoundSummaryScreen: Received word-selection state, navigating to WordSelection');
+      navigation.replace('WordSelection');
+    }
+  }, [gameState?.gameState, navigation, isFocused]);
 
   if (!lastCorrectGuess) {
     return (
@@ -68,13 +73,19 @@ export default function RoundSummaryScreen({ navigation }: Props) {
           style={styles.primaryButton}
           onPress={() => {
             if (isContinuingRef.current) {
-              console.log('Already continuing, ignoring duplicate press');
+              console.log('RoundSummaryScreen: Already continuing, ignoring duplicate press');
               return;
             }
             isContinuingRef.current = true;
-            console.log('Continuing to next round, clearing correct guess');
+            console.log('RoundSummaryScreen: Continuing to next round');
+            
+            // Clear the correct guess first
             clearCorrectGuess();
+            
+            // Continue to next round
             continueNextRound();
+            
+            // Navigate to word selection
             navigation.replace('WordSelection');
           }}
         >
