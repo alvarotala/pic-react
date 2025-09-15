@@ -38,7 +38,7 @@ function App() {
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState('');
   const [roomCode, setRoomCode] = useState('');
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'lobby' | 'waiting-for-word' | 'drawing' | 'guessing'>('home');
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'lobby' | 'waiting-for-word' | 'drawing' | 'guessing' | 'game-over'>('home');
   const [guess, setGuess] = useState('');
   const [recentGuesses, setRecentGuesses] = useState<Array<{
     playerName: string;
@@ -121,7 +121,7 @@ function App() {
     newSocket.on('correct-guess', (guessData: any, state: GameState) => {
       setGameState(state);
       console.log('Correct guess:', guessData);
-      alert(`${guessData.playerName} guessed correctly: "${guessData.guess}"`);
+      // No alert here; UI stays ready for next round
     });
 
     newSocket.on('timer-update', (timeLeft: number) => {
@@ -132,12 +132,13 @@ function App() {
 
     newSocket.on('round-ended', (state: GameState) => {
       setGameState(state);
-      console.log('Round ended');
+      setCurrentScreen('waiting-for-word');
+      console.log('Round ended - waiting for next round');
     });
 
     newSocket.on('game-over', (state: GameState) => {
       setGameState(state);
-      setCurrentScreen('guessing');
+      setCurrentScreen('game-over');
       console.log('Game over');
     });
 
@@ -487,23 +488,26 @@ function App() {
         ))}
       </div>
 
-      {gameState?.gameState === 'game-over' && (
-        <div className="game-over-section">
-          <h2>🎉 Game Over! 🎉</h2>
-          <h3>Final Scores:</h3>
-          {gameState.players
-            .sort((a, b) => b.score - a.score)
-            .map((player, index) => (
-              <div key={player.id} className="final-score-item">
-                <span className="final-score-rank">{index + 1}. {player.name}</span>
-                <span className="final-score">{player.score} pts</span>
-              </div>
-            ))}
-          <button className="btn btn-primary" onClick={() => setCurrentScreen('home')}>
-            Play Again
-          </button>
-        </div>
-      )}
+    </div>
+  );
+
+  const renderGameOver = () => (
+    <div className="container">
+      <div className="game-over-section">
+        <h2>🎉 Game Over! 🎉</h2>
+        <h3>Final Scores:</h3>
+        {gameState?.players
+          .sort((a, b) => b.score - a.score)
+          .map((player, index) => (
+            <div key={player.id} className="final-score-item">
+              <span className="final-score-rank">{index + 1}. {player.name}</span>
+              <span className="final-score">{player.score} pts</span>
+            </div>
+          ))}
+        <button className="btn btn-primary" onClick={() => setCurrentScreen('home')}>
+          Play Again
+        </button>
+      </div>
     </div>
   );
 
@@ -518,6 +522,8 @@ function App() {
       return renderDrawing();
     case 'guessing':
       return renderGuessing();
+    case 'game-over':
+      return renderGameOver();
     default:
       return renderHome();
   }

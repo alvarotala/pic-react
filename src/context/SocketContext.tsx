@@ -38,13 +38,14 @@ interface SocketContextType {
   playerType: 'mobile' | 'web' | null;
   roomId: string | null;
   roomError: string | null;
-  lastCorrectGuess: { playerName: string; guess: string } | null;
+  lastCorrectGuess: { playerName: string; guess: string; timeElapsedSeconds: number } | null;
   wasGameCancelled: boolean;
   connect: () => void;
   createRoom: (playerName: string) => void;
   joinRoom: (roomId: string, playerName: string) => void;
   startGame: () => void;
   cancelGame: () => void;
+  continueNextRound: () => void;
   selectWord: (word: string) => void;
   sendDrawingData: (drawingData: any) => void;
   submitGuess: (guess: string) => void;
@@ -67,7 +68,7 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [playerType] = useState<'mobile' | 'web'>('mobile');
   const [roomId, setRoomId] = useState<string | null>(null);
   const [roomError, setRoomError] = useState<string | null>(null);
-  const [lastCorrectGuess, setLastCorrectGuess] = useState<{ playerName: string; guess: string } | null>(null);
+  const [lastCorrectGuess, setLastCorrectGuess] = useState<{ playerName: string; guess: string; timeElapsedSeconds: number } | null>(null);
   const [wasGameCancelled, setWasGameCancelled] = useState<boolean>(false);
 
   const connect = () => {
@@ -132,11 +133,13 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     newSocket.on('game-started', (state: GameState) => {
       setGameState(state);
+      setLastCorrectGuess(null);
       console.log('Game started');
     });
 
     newSocket.on('word-selected', (state: GameState) => {
       setGameState(state);
+      setLastCorrectGuess(null);
       console.log('Word selected, starting drawing phase');
     });
 
@@ -152,9 +155,11 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     newSocket.on('correct-guess', (guessData: any, state: GameState) => {
       setGameState(state);
+      const timeElapsedSeconds = Math.max(0, 60 - (state?.timeLeft ?? 0));
       setLastCorrectGuess({
         playerName: guessData.playerName,
-        guess: guessData.guess
+        guess: guessData.guess,
+        timeElapsedSeconds,
       });
       console.log('Correct guess:', guessData);
     });
@@ -216,6 +221,12 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const cancelGame = () => {
     if (socket && roomId && playerType === 'mobile') {
       socket.emit('cancel-game', roomId);
+    }
+  };
+
+  const continueNextRound = () => {
+    if (socket && roomId && playerType === 'mobile') {
+      socket.emit('continue-next-round', roomId);
     }
   };
 
@@ -281,6 +292,7 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         joinRoom,
         startGame,
         cancelGame,
+        continueNextRound,
         selectWord,
         sendDrawingData,
         submitGuess,

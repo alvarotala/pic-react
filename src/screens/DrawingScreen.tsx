@@ -19,7 +19,7 @@ interface Props {
 }
 
 export default function DrawingScreen({ navigation }: Props) {
-  const { gameState, playerId, sendDrawingData, cancelGame, wasGameCancelled, clearCancelled } = useSocket();
+  const { gameState, playerId, sendDrawingData, cancelGame, wasGameCancelled, clearCancelled, lastCorrectGuess } = useSocket();
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPaths, setCurrentPaths] = useState<string[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -37,15 +37,11 @@ export default function DrawingScreen({ navigation }: Props) {
           setCurrentPaths(gameState.drawingData.paths);
         }
       } else if (gameState.gameState === 'finished') {
-        // When a word is guessed correctly, navigate back to WordSelectionScreen
-        // DO NOT go to Home - go back to word selection for next round
-        navigation.replace('WordSelection');
+        // When a word is guessed correctly, show intermediate round summary
+        navigation.replace('RoundSummary');
       } else if (gameState.gameState === 'game-over') {
-        // Game is completely finished, go back to home
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Home' }],
-        });
+        // Show game over screen
+        navigation.replace('GameOver');
       }
     }
   }, [gameState, navigation]);
@@ -60,6 +56,13 @@ export default function DrawingScreen({ navigation }: Props) {
       clearCancelled();
     }
   }, [wasGameCancelled, clearCancelled, navigation]);
+
+  // If a correct guess is received, show summary immediately (without waiting for 'finished')
+  useEffect(() => {
+    if (lastCorrectGuess) {
+      navigation.replace('RoundSummary');
+    }
+  }, [lastCorrectGuess, navigation]);
 
   // Header: replace back with Cancel action
   useLayoutEffect(() => {

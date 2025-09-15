@@ -9,11 +9,15 @@ import { SocketProvider } from './src/context/SocketContext';
 import HomeScreen from './src/screens/HomeScreen';
 import WordSelectionScreen from './src/screens/WordSelectionScreen';
 import DrawingScreen from './src/screens/DrawingScreen';
+import RoundSummaryScreen from './src/screens/RoundSummaryScreen';
+import GameOverScreen from './src/screens/GameOverScreen';
 
 export type RootStackParamList = {
   Home: undefined;
   WordSelection: undefined;
   Drawing: undefined;
+  RoundSummary: undefined;
+  GameOver: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -51,6 +55,16 @@ export default function App() {
                 name="Drawing" 
                 component={DrawingScreen} 
                 options={{ title: 'Drawing' }}
+              />
+              <Stack.Screen 
+                name="RoundSummary" 
+                component={RoundSummaryScreen} 
+                options={{ title: 'Round Summary' }}
+              />
+              <Stack.Screen 
+                name="GameOver" 
+                component={GameOverScreen} 
+                options={{ title: 'Game Over' }}
               />
             </Stack.Navigator>
           </NavigationContainer>

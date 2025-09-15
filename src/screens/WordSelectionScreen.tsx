@@ -26,7 +26,7 @@ const WORD_CATEGORIES = {
 };
 
 export default function WordSelectionScreen({ navigation }: Props) {
-  const { gameState, playerId, selectWord, lastCorrectGuess, clearCorrectGuess, cancelGame, wasGameCancelled, clearCancelled } = useSocket();
+  const { gameState, playerId, selectWord, lastCorrectGuess, clearCorrectGuess, cancelGame, wasGameCancelled, clearCancelled, continueNextRound } = useSocket();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -41,15 +41,11 @@ export default function WordSelectionScreen({ navigation }: Props) {
       } else if (gameState.gameState === 'drawing') {
         navigation.replace('Drawing');
       } else if (gameState.gameState === 'finished') {
-        // When a word is guessed correctly, show message and continue to next round
-        // DO NOT navigate anywhere - just stay on this screen and show the success message
-        console.log('Word was guessed correctly! Staying on WordSelectionScreen...');
+        // Intermediate summary is handled in RoundSummary screen
+        // Nothing to do here
       } else if (gameState.gameState === 'game-over') {
-        // Game is completely finished, go back to home
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Home' }],
-        });
+        // Show game over screen
+        navigation.replace('GameOver');
       }
     }
   }, [gameState, navigation]);
@@ -114,6 +110,7 @@ export default function WordSelectionScreen({ navigation }: Props) {
     setSelectedCategory(null);
     setSelectedWord(null);
     setIsSelecting(false);
+    continueNextRound();
   };
 
   const isCurrentDrawer = gameState?.currentDrawer === playerId;
@@ -134,19 +131,12 @@ export default function WordSelectionScreen({ navigation }: Props) {
     );
   }
 
-  // Show end-of-round summary while server transitions to next round
+  // If finished state is received here, the summary screen will handle it
   if (gameState.gameState === 'finished') {
-    const topPlayer = [...gameState.players].sort((a, b) => b.score - a.score)[0];
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.waitingTitle}>Round finished</Text>
-          {topPlayer && (
-            <Text style={styles.waitingText}>
-              Top score: {topPlayer.name} ({topPlayer.score} pts)
-            </Text>
-          )}
-          <Text style={styles.waitingSubtext}>Next round will start automatically...</Text>
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
       </SafeAreaView>
     );
@@ -194,20 +184,7 @@ export default function WordSelectionScreen({ navigation }: Props) {
           <Text style={styles.subtitle}>Choose a word that others can guess!</Text>
         </View>
 
-        {lastCorrectGuess && (
-          <View style={styles.correctGuessContainer}>
-            <Text style={styles.correctGuessTitle}>🎉 Word Guessed Correctly!</Text>
-            <Text style={styles.correctGuessText}>
-              {lastCorrectGuess.playerName} guessed "{lastCorrectGuess.guess}" correctly!
-            </Text>
-            <TouchableOpacity
-              style={styles.continueButton}
-              onPress={handleContinueToNextRound}
-            >
-              <Text style={styles.continueButtonText}>Continue to Next Round</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        {/* RoundSummary handles correct-guess messaging */}
 
         <View style={styles.categorySection}>
           <Text style={styles.sectionTitle}>Choose a Category:</Text>

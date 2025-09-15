@@ -42,6 +42,8 @@ class GameRoom {
     this.maxRounds = 3;
     this.scores = new Map();
     this.timer = null;
+    this.roundEndTimeout = null;
+    this.nextRoundTimeout = null;
   }
 
   addPlayer(socketId, playerName, playerType) {
@@ -307,8 +309,12 @@ io.on('connection', (socket) => {
       
       io.to(normalizedRoomId).emit('correct-guess', guessData, room.getGameState());
       
-      // End current round
-      setTimeout(() => {
+      // Schedule round end unless host fast-forwards
+      if (room.roundEndTimeout) {
+        clearTimeout(room.roundEndTimeout);
+        room.roundEndTimeout = null;
+      }
+      room.roundEndTimeout = setTimeout(() => {
         endRound(normalizedRoomId);
       }, 2000);
     } else {
@@ -375,22 +381,46 @@ function endRound(roomId) {
     room.timer = null;
   }
 
+  // Clear any pending round-end timeout
+  if (room.roundEndTimeout) {
+    clearTimeout(room.roundEndTimeout);
+    room.roundEndTimeout = null;
+  }
+
   room.gameState = 'finished';
   io.to(normalizedRoomId).emit('round-ended', room.getGameState());
+  // Do NOT auto-start next round; wait for host to trigger continue-next-round
+}
 
-  // Start next round after delay
-  setTimeout(() => {
-    if (room.rounds < room.maxRounds) {
-      if (room.startNewRound()) {
-        io.to(normalizedRoomId).emit('game-started', room.getGameState());
-        startGameTimer(normalizedRoomId);
-      }
-    } else {
+// Fast-forward to next round immediately (host action)
+io.on('connection', (socket) => {
+  socket.on('continue-next-round', (roomId) => {
+    const normalizedRoomId = (roomId || '').toLowerCase();
+    const room = gameRooms.get(normalizedRoomId);
+    if (!room) return;
+
+    // Only host (mobile creator) can continue immediately
+    if (socket.id !== room.hostId) return;
+
+    // Stop timers and pending timeouts
+    if (room.timer) { clearInterval(room.timer); room.timer = null; }
+    if (room.roundEndTimeout) { clearTimeout(room.roundEndTimeout); room.roundEndTimeout = null; }
+    if (room.nextRoundTimeout) { clearTimeout(room.nextRoundTimeout); room.nextRoundTimeout = null; }
+
+    // If game over threshold reached, finish
+    if (room.rounds >= room.maxRounds) {
       room.gameState = 'game-over';
       io.to(normalizedRoomId).emit('game-over', room.getGameState());
+      return;
     }
-  }, 3000);
-}
+
+    // Start next round now
+    if (room.startNewRound()) {
+      io.to(normalizedRoomId).emit('game-started', room.getGameState());
+      startGameTimer(normalizedRoomId);
+    }
+  });
+});
 
 // API endpoints
 app.get('/api/rooms/:roomId', (req, res) => {
