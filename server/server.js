@@ -245,8 +245,9 @@ io.on('connection', (socket) => {
     room.currentWord = word;
     room.gameState = 'drawing';
     
-    // Clear previous drawing data for new round
+    // Clear previous drawing data and unlock round for new round
     room.drawingData = null;
+    room.roundLocked = false;
     
     console.log(`Word selected: ${word}, starting drawing phase for room ${normalizedRoomId}`);
     io.to(normalizedRoomId).emit('word-selected', room.getGameState());
@@ -278,10 +279,24 @@ io.on('connection', (socket) => {
 
   // Handle guess submission
   socket.on('submit-guess', (roomId, guess) => {
+    console.log(`🔔 Server: submit-guess received from ${socket.id} for room ${roomId}: "${guess}"`);
     const normalizedRoomId = roomId.toLowerCase();
     const room = gameRooms.get(normalizedRoomId);
-    if (!room || room.gameState !== 'drawing' || room.currentDrawer === socket.id) return;
-    if (room.roundLocked) return;
+    
+    console.log(`🔔 Server: room exists: ${!!room}`);
+    console.log(`🔔 Server: gameState: ${room?.gameState}`);
+    console.log(`🔔 Server: currentDrawer: ${room?.currentDrawer}`);
+    console.log(`🔔 Server: socket.id: ${socket.id}`);
+    console.log(`🔔 Server: roundLocked: ${room?.roundLocked}`);
+    
+    if (!room || room.gameState !== 'drawing' || room.currentDrawer === socket.id) {
+      console.log(`🔔 Server: ❌ Rejecting guess - conditions not met`);
+      return;
+    }
+    if (room.roundLocked) {
+      console.log(`🔔 Server: ❌ Rejecting guess - round locked`);
+      return;
+    }
 
     const player = room.players.get(socket.id);
     if (!player) return;
@@ -296,7 +311,9 @@ io.on('connection', (socket) => {
     room.guesses.push(guessData);
     
     // Check if guess is correct
+    console.log(`🔔 Server: Checking guess "${guess}" against word "${room.currentWord}"`);
     if (guess.toLowerCase().trim() === room.currentWord.toLowerCase()) {
+      console.log(`🔔 Server: ✅ CORRECT GUESS! "${guess}" matches "${room.currentWord}"`);
       // Award points
       const drawerScore = room.scores.get(room.currentDrawer) || 0;
       const guesserScore = room.scores.get(socket.id) || 0;
@@ -409,8 +426,9 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Clear drawing data and change to word-selection state
+    // Clear drawing data, unlock round, and change to word-selection state
     room.drawingData = null;
+    room.roundLocked = false;
     room.gameState = 'word-selection';
     io.to(normalizedRoomId).emit('continue-to-word-selection', room.getGameState());
   });

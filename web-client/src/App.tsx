@@ -111,8 +111,14 @@ function App() {
 
     newSocket.on('word-selected', (state: GameState) => {
       setGameState(state);
-      setCurrentScreen(state.currentDrawer === playerId ? 'drawing' : 'guessing');
-      console.log('Word selected, starting drawing phase');
+      console.log('🔔 Web: word-selected event received');
+      console.log('🔔 Web: playerId:', playerId);
+      console.log('🔔 Web: currentDrawer:', state.currentDrawer);
+      console.log('🔔 Web: isCurrentDrawer:', state.currentDrawer === playerId);
+      
+      const newScreen = state.currentDrawer === playerId ? 'drawing' : 'guessing';
+      console.log('🔔 Web: Setting screen to:', newScreen);
+      setCurrentScreen(newScreen);
     });
 
     newSocket.on('drawing-update', (drawingData: any) => {
@@ -125,9 +131,12 @@ function App() {
     });
 
     newSocket.on('correct-guess', (guessData: any, state: GameState) => {
+      console.log('🔔 Web: correct-guess event received');
+      console.log('🔔 Web: guessData:', guessData);
+      console.log('🔔 Web: state:', state);
+      
       setGameState(state);
-      console.log('Correct guess:', guessData);
-      // No alert here; UI stays ready for next round
+      console.log('🔔 Web: ✅ Correct guess processed:', guessData);
     });
 
     newSocket.on('timer-update', (timeLeft: number) => {
@@ -202,9 +211,20 @@ function App() {
   };
 
   const submitGuess = () => {
+    console.log('🔔 Web: submitGuess called');
+    console.log('🔔 Web: socket:', !!socket);
+    console.log('🔔 Web: gameState:', !!gameState);
+    console.log('🔔 Web: guess:', guess.trim());
+    console.log('🔔 Web: currentDrawer:', gameState?.currentDrawer);
+    console.log('🔔 Web: playerId:', playerId);
+    console.log('🔔 Web: isNotCurrentDrawer:', gameState?.currentDrawer !== playerId);
+    
     if (socket && gameState && guess.trim() && gameState.currentDrawer !== playerId) {
+      console.log('🔔 Web: ✅ Sending guess:', guess.trim());
       socket.emit('submit-guess', gameState.id, guess.trim());
       setGuess('');
+    } else {
+      console.log('🔔 Web: ❌ Cannot submit guess - conditions not met');
     }
   };
 
