@@ -228,6 +228,18 @@ function App() {
     }
   };
 
+  const leaveRoom = () => {
+    console.log('🔔 Web: Leaving room');
+    // Disconnect from socket to actually leave the room
+    if (socket) {
+      socket.disconnect();
+    }
+    setCurrentScreen('home');
+    setGameState(null);
+    setPlayerName('');
+    setRoomCode('');
+  };
+
   const isCurrentDrawer = gameState?.currentDrawer === playerId;
 
   const renderHome = () => (
@@ -286,7 +298,7 @@ function App() {
     <div className="container">
       <div className="lobby-header">
         <h2>Room: {gameState?.id}</h2>
-        <button className="btn btn-back" onClick={() => setCurrentScreen('home')}>
+        <button className="btn btn-back" onClick={leaveRoom}>
           ← Back
         </button>
       </div>
@@ -528,12 +540,7 @@ function App() {
           <button className="btn btn-primary" onClick={() => setCurrentScreen('lobby')}>
             Play Again
           </button>
-          <button className="btn btn-secondary" onClick={() => {
-            setCurrentScreen('home');
-            setGameState(null);
-            setPlayerName('');
-            setRoomCode('');
-          }}>
+          <button className="btn btn-secondary" onClick={leaveRoom}>
             Leave Room
           </button>
         </div>
