@@ -1,0 +1,181 @@
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../../App';
+import { useSocket } from '../context/SocketContext';
+
+type RoundSummaryNavigationProp = StackNavigationProp<RootStackParamList, 'RoundSummary'>;
+
+interface Props {
+  navigation: RoundSummaryNavigationProp;
+}
+
+export default function RoundSummaryScreen({ navigation }: Props) {
+  const { lastCorrectGuess, continueNextRound, cancelGame, gameState, clearCorrectGuess, wasGameCancelled, clearCancelled } = useSocket();
+  const isFocused = useIsFocused();
+  const isContinuingRef = useRef(false);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity
+          onPress={() => {
+            Alert.alert('Cancel game', 'Are you sure you want to cancel the game for everyone?', [
+              { text: 'No', style: 'cancel' },
+              { text: 'Yes, cancel', style: 'destructive', onPress: () => cancelGame() },
+            ]);
+          }}
+          style={{ marginLeft: 12 }}
+        >
+          <Text style={{ color: '#fff', fontSize: 16 }}>Cancel</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, cancelGame]);
+
+  // No-op to avoid unused variable warning if needed
+
+  // Clear correct guess when component unmounts to prevent navigation issues
+  useEffect(() => {
+    return () => {
+      console.log('RoundSummaryScreen unmounting, clearing correct guess');
+      clearCorrectGuess();
+    };
+  }, [clearCorrectGuess]);
+
+  // Handle continue-to-word-selection event
+  useEffect(() => {
+    if (gameState?.gameState === 'word-selection' && isFocused) {
+      console.log('RoundSummaryScreen: Received word-selection state, navigating to WordSelection');
+      navigation.replace('WordSelection');
+    }
+  }, [gameState?.gameState, navigation, isFocused]);
+
+  // Handle game cancellation broadcast
+  useEffect(() => {
+    if (wasGameCancelled) {
+      Alert.alert('Game cancelled', 'The host cancelled the game.', [
+        { text: 'OK', onPress: () => {} }
+      ]);
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+      clearCancelled();
+    }
+  }, [wasGameCancelled, clearCancelled, navigation]);
+
+  // Check if we have a correct guess or if the round ended due to timeout
+  const isTimeout = gameState?.gameState === 'finished' && !lastCorrectGuess;
+  
+  if (!lastCorrectGuess && !isTimeout) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.center}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.card}>
+        {lastCorrectGuess ? (
+          <>
+            <Text style={styles.title}>🎉 Correct Guess!</Text>
+            <Text style={styles.text}>{lastCorrectGuess.playerName} guessed "{lastCorrectGuess.guess}"</Text>
+            <Text style={styles.subText}>Time elapsed: {lastCorrectGuess.timeElapsedSeconds}s</Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.title}>⏰ Time's Up!</Text>
+            <Text style={styles.text}>No one guessed the word in time</Text>
+            <Text style={styles.subText}>The drawer gets 10 points for completing the drawing</Text>
+          </>
+        )}
+
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => {
+            if (isContinuingRef.current) {
+              console.log('RoundSummaryScreen: Already continuing, ignoring duplicate press');
+              return;
+            }
+            isContinuingRef.current = true;
+            console.log('RoundSummaryScreen: Continuing to next round');
+            
+            // Clear the correct guess first
+            clearCorrectGuess();
+            
+            // Continue to next round
+            continueNextRound();
+            
+            // Navigate to word selection
+            navigation.replace('WordSelection');
+          }}
+        >
+          <Text style={styles.primaryButtonText}>Continue to Next Round</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    padding: 16,
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#6b7280',
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 24,
+    marginTop: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  text: {
+    fontSize: 18,
+    color: '#374151',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subText: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  primaryButton: {
+    backgroundColor: '#10b981',
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
+
+

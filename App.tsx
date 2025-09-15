@@ -5,14 +5,19 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { SocketProvider } from './src/context/SocketContext';
 import HomeScreen from './src/screens/HomeScreen';
+import WordSelectionScreen from './src/screens/WordSelectionScreen';
 import DrawingScreen from './src/screens/DrawingScreen';
-import GuessingScreen from './src/screens/GuessingScreen';
+import RoundSummaryScreen from './src/screens/RoundSummaryScreen';
+import GameOverScreen from './src/screens/GameOverScreen';
 
 export type RootStackParamList = {
   Home: undefined;
-  Drawing: { word: string };
-  Guessing: { word: string };
+  WordSelection: undefined;
+  Drawing: undefined;
+  RoundSummary: undefined;
+  GameOver: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -21,37 +26,49 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <NavigationContainer>
-          <StatusBar style="auto" />
-          <Stack.Navigator
-            initialRouteName="Home"
-            screenOptions={{
-              headerStyle: {
-                backgroundColor: '#6366f1',
-              },
-              headerTintColor: '#fff',
-              headerTitleStyle: {
-                fontWeight: 'bold',
-              },
-            }}
-          >
-            <Stack.Screen 
-              name="Home" 
-              component={HomeScreen} 
-              options={{ title: 'Pictionary' }}
-            />
-            <Stack.Screen 
-              name="Drawing" 
-              component={DrawingScreen} 
-              options={{ title: 'Draw It!' }}
-            />
-            <Stack.Screen 
-              name="Guessing" 
-              component={GuessingScreen} 
-              options={{ title: 'Guess It!' }}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
+        <SocketProvider>
+          <NavigationContainer>
+            <StatusBar style="auto" />
+            <Stack.Navigator
+              initialRouteName="Home"
+              screenOptions={{
+                headerStyle: {
+                  backgroundColor: '#6366f1',
+                },
+                headerTintColor: '#fff',
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                },
+              }}
+            >
+              <Stack.Screen 
+                name="Home" 
+                component={HomeScreen} 
+                options={{ title: 'Pictionary Mobile' }}
+              />
+              <Stack.Screen 
+                name="WordSelection" 
+                component={WordSelectionScreen} 
+                options={{ title: 'Select Word' }}
+              />
+              <Stack.Screen 
+                name="Drawing" 
+                component={DrawingScreen} 
+                options={{ title: 'Drawing' }}
+              />
+              <Stack.Screen 
+                name="RoundSummary" 
+                component={RoundSummaryScreen} 
+                options={{ title: 'Round Summary' }}
+              />
+              <Stack.Screen 
+                name="GameOver" 
+                component={GameOverScreen} 
+                options={{ title: 'Game Over' }}
+              />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </SocketProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
