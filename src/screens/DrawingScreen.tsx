@@ -200,12 +200,7 @@ export default function DrawingScreen({ navigation }: Props) {
         <Text style={styles.timerText}>Time: {gameState.timeLeft}s</Text>
       </View>
 
-      {/* Cancel is now in header */}
-
       <View style={styles.playerInfo}>
-        <Text style={styles.drawerText}>
-          You are drawing! Web players are guessing.
-        </Text>
         <Text style={styles.roundText}>
           Round {gameState.rounds}/{gameState.maxRounds}
         </Text>
@@ -220,15 +215,6 @@ export default function DrawingScreen({ navigation }: Props) {
           onPathsChange={handleDrawingUpdate}
           isMultiplayer={true}
         />
-      </View>
-
-      <View style={styles.instructions}>
-        <Text style={styles.instructionText}>
-          Draw: {gameState.currentWord}
-        </Text>
-        <Text style={styles.instructionSubtext}>
-          Web players are trying to guess your drawing!
-        </Text>
       </View>
 
       <View style={styles.playersList}>

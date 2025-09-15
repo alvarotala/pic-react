@@ -128,7 +128,7 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     newSocket.on('player-left', (state: GameState) => {
       setGameState(state);
-      console.log('Player left');
+      console.log('Player left, remaining players:', state.players.length);
     });
 
     newSocket.on('game-started', (state: GameState) => {

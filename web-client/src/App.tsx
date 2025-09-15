@@ -524,9 +524,19 @@ function App() {
               <span className="final-score">{player.score} pts</span>
             </div>
           ))}
-        <button className="btn btn-primary" onClick={() => setCurrentScreen('home')}>
-          Play Again
-        </button>
+        <div className="button-group">
+          <button className="btn btn-primary" onClick={() => setCurrentScreen('lobby')}>
+            Play Again
+          </button>
+          <button className="btn btn-secondary" onClick={() => {
+            setCurrentScreen('home');
+            setGameState(null);
+            setPlayerName('');
+            setRoomCode('');
+          }}>
+            Leave Room
+          </button>
+        </div>
       </div>
     </div>
   );
