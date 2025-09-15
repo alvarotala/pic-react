@@ -106,7 +106,17 @@ export default function WordSelectionScreen({ navigation }: Props) {
       return;
     }
 
-    if (!gameState || gameState.currentDrawer !== playerId) {
+    if (!gameState) {
+      Alert.alert('Error', 'Game state not available!');
+      return;
+    }
+
+    if (!playerId) {
+      Alert.alert('Error', 'Player ID not loaded. Please restart the app.');
+      return;
+    }
+
+    if (gameState.currentDrawer !== playerId) {
       Alert.alert('Error', 'You are not the current drawer!');
       return;
     }
@@ -131,6 +141,7 @@ export default function WordSelectionScreen({ navigation }: Props) {
   console.log('WordSelectionScreen - currentDrawer:', gameState?.currentDrawer);
   console.log('WordSelectionScreen - playerId:', playerId);
   console.log('WordSelectionScreen - isCurrentDrawer:', isCurrentDrawer);
+  console.log('WordSelectionScreen - players:', gameState?.players);
 
   if (!gameState) {
     return (
@@ -164,6 +175,17 @@ export default function WordSelectionScreen({ navigation }: Props) {
   }
 
   if (!isCurrentDrawer) {
+    // If playerId is null, show a loading state instead of waiting
+    if (!playerId) {
+      return (
+        <SafeAreaView style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading player info...</Text>
+          </View>
+        </SafeAreaView>
+      );
+    }
+    
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.waitingContainer}>
@@ -193,6 +215,11 @@ export default function WordSelectionScreen({ navigation }: Props) {
         <View style={styles.header}>
           <Text style={styles.title}>Select a Word to Draw</Text>
           <Text style={styles.subtitle}>Choose a word that others can guess!</Text>
+          {!playerId && (
+            <Text style={styles.warningText}>
+              ⚠️ Warning: Player ID not loaded. If you can't select words, please restart the app.
+            </Text>
+          )}
         </View>
 
         {/* RoundSummary handles correct-guess messaging */}
@@ -331,6 +358,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#64748b',
     textAlign: 'center',
+  },
+  warningText: {
+    fontSize: 14,
+    color: '#f59e0b',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 16,
   },
   categorySection: {
     marginBottom: 30,
