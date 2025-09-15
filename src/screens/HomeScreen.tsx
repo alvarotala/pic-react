@@ -20,7 +20,7 @@ interface Props {
 }
 
 export default function HomeScreen({ navigation }: Props) {
-  const { gameState, isConnected, connect, createRoom, startGame, roomError, clearRoomError, wasGameCancelled, clearCancelled } = useSocket();
+  const { gameState, isConnected, connect, createRoom, startGame, roomError, clearRoomError, wasGameCancelled, clearCancelled, leaveRoom } = useSocket();
   const [playerName, setPlayerName] = useState('');
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
 
@@ -74,6 +74,17 @@ export default function HomeScreen({ navigation }: Props) {
     }
   };
 
+  const handleLeaveRoom = () => {
+    Alert.alert(
+      'Leave Room',
+      'Are you sure you want to leave the room? Other players will be notified.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Leave', style: 'destructive', onPress: () => leaveRoom() },
+      ]
+    );
+  };
+
   const renderLobby = () => {
     if (!gameState) return null;
 
@@ -104,6 +115,13 @@ export default function HomeScreen({ navigation }: Props) {
               Waiting for more players... (Need at least 2)
             </Text>
           )}
+          
+          <TouchableOpacity
+            style={styles.leaveButton}
+            onPress={handleLeaveRoom}
+          >
+            <Text style={styles.leaveButtonText}>🚪 Leave Room</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -338,5 +356,18 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  leaveButton: {
+    backgroundColor: '#ef4444',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  leaveButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

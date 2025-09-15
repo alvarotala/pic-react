@@ -50,6 +50,7 @@ interface SocketContextType {
   sendDrawingData: (drawingData: any) => void;
   submitGuess: (guess: string) => void;
   disconnect: () => void;
+  leaveRoom: () => void;
   clearRoomError: () => void;
   clearCorrectGuess: () => void;
   clearCancelled: () => void;
@@ -267,6 +268,16 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
+  const leaveRoom = () => {
+    // Reset all game state without disconnecting from server
+    setGameState(null);
+    setRoomId(null);
+    setPlayerName(null);
+    setLastCorrectGuess(null);
+    setWasGameCancelled(false);
+    setPlayerId(null);
+  };
+
   const clearRoomError = () => {
     setRoomError(null);
   };
@@ -307,6 +318,7 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         sendDrawingData,
         submitGuess,
         disconnect,
+        leaveRoom,
         clearRoomError,
         clearCorrectGuess,
         clearCancelled,
