@@ -57,31 +57,33 @@ cd ../web-client
 npm start &
 WEB_PID=$!
 
-echo "3️⃣ Starting mobile app"
-cd ..
-npm start &
-MOBILE_PID=$!
+
 
 echo ""
 echo "🎉 All services are starting!"
 echo ""
-echo "📱 Mobile app: Expo development server"
+echo "📱 Mobile app: Expo development server (QR code will appear below)"
 echo "🌐 Web client: http://localhost:3000"
 echo "🖥️ Backend server: http://localhost:3001"
 echo ""
+echo "📱 Scan the QR code with Expo Go app on your mobile device"
 echo "To stop all services, press Ctrl+C"
+
+
+
+echo "3️⃣ Starting mobile app"
+cd ..
+npm start
+
 
 # Function to cleanup on exit
 cleanup() {
     echo ""
     echo "🛑 Stopping all services..."
-    kill $SERVER_PID $WEB_PID $MOBILE_PID 2>/dev/null
+    kill $SERVER_PID $WEB_PID 2>/dev/null
     echo "✅ All services stopped"
     exit 0
 }
 
 # Set up signal handlers
 trap cleanup SIGINT SIGTERM
-
-# Wait for all background processes
-wait

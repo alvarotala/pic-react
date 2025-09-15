@@ -117,6 +117,29 @@ cd pic-react
 npm start
 ```
 
+### Quick Start (Automated Setup)
+
+For a faster setup, you can use the provided script that automatically installs dependencies and starts all services:
+
+```bash
+# Make the script executable (first time only)
+chmod +x start-all.sh
+
+# Run the automated setup and start script
+./start-all.sh
+```
+
+This script will:
+- ✅ Check prerequisites (Node.js and npm)
+- 📦 Install all dependencies (mobile app, server, web client)
+- 🚀 Start all three services simultaneously:
+  - Backend server on `http://localhost:3001`
+  - Web client on `http://localhost:3000`
+  - Mobile app (Expo development server)
+- 🛑 Stop all services when you press `Ctrl+C`
+
+**Note**: This script is designed for development and testing. All services run in the background and can be stopped together with `Ctrl+C`.
+
 ## Configuration
 
 ### Server Configuration
