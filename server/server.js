@@ -328,17 +328,15 @@ io.on('connection', (socket) => {
     console.log(`🔔 Server: Checking guess "${guess}" against word "${room.currentWord}"`);
     if (guess.toLowerCase().trim() === room.currentWord.toLowerCase()) {
       console.log(`🔔 Server: ✅ CORRECT GUESS! "${guess}" matches "${room.currentWord}"`);
-      // Award points
-      const drawerScore = room.scores.get(room.currentDrawer) || 0;
+      // Award points ONLY to the guesser for correct guess
       const guesserScore = room.scores.get(socket.id) || 0;
-      room.scores.set(room.currentDrawer, drawerScore + 10);
       room.scores.set(socket.id, guesserScore + 15);
       
       // Update player scores
-      const drawer = room.players.get(room.currentDrawer);
       const guesser = room.players.get(socket.id);
-      if (drawer) drawer.score = room.scores.get(room.currentDrawer);
       if (guesser) guesser.score = room.scores.get(socket.id);
+      
+      console.log(`🔔 Server: Guesser ${guesser?.name} gets 15 points for correct guess`);
       
       // Lock round to prevent duplicate winners
       room.roundLocked = true;
@@ -417,6 +415,21 @@ function endRound(roomId) {
   if (room.timer) {
     clearInterval(room.timer);
     room.timer = null;
+  }
+
+  // Award points to drawer ONLY if round ended due to timeout (not correct guess)
+  if (!room.roundLocked) {
+    console.log(`🔔 Server: Round ended due to timeout - giving points to drawer`);
+    const drawerScore = room.scores.get(room.currentDrawer) || 0;
+    room.scores.set(room.currentDrawer, drawerScore + 10);
+    
+    // Update drawer score
+    const drawer = room.players.get(room.currentDrawer);
+    if (drawer) drawer.score = room.scores.get(room.currentDrawer);
+    
+    console.log(`🔔 Server: Drawer ${drawer?.name} gets 10 points for timeout`);
+  } else {
+    console.log(`🔔 Server: Round ended due to correct guess - no points for drawer`);
   }
 
   room.gameState = 'finished';
