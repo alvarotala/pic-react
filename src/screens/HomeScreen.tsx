@@ -26,9 +26,9 @@ export default function HomeScreen({ navigation }: Props) {
 
   useEffect(() => {
     if (gameState && gameState.gameState === 'word-selection') {
-      navigation.navigate('WordSelection');
+      navigation.replace('WordSelection');
     } else if (gameState && gameState.gameState === 'drawing') {
-      navigation.navigate('Drawing');
+      navigation.replace('Drawing');
     } else if (gameState && gameState.gameState === 'waiting') {
       // Stay on this screen to show lobby
     }
