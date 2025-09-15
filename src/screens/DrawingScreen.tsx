@@ -28,6 +28,7 @@ export default function DrawingScreen({ navigation }: Props) {
 
   const prevPhaseRef = useRef<string | null>(null);
   const navigatedToSummaryRef = useRef(false);
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
     const phase = gameState?.gameState || null;
     if (!phase) return;
@@ -64,16 +65,39 @@ export default function DrawingScreen({ navigation }: Props) {
     }
   }, [wasGameCancelled, clearCancelled, navigation]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // If a correct guess is received, show summary immediately exactly once
   useEffect(() => {
-    if (lastCorrectGuess && !navigatedToSummaryRef.current) {
+    if (lastCorrectGuess && !navigatedToSummaryRef.current && isFocused) {
+      console.log('Navigating to RoundSummary due to correct guess');
       navigatedToSummaryRef.current = true;
-      navigation.replace('RoundSummary');
+      
+      // Clear any existing timeout
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+      
+      // Add a small delay to prevent rapid navigation calls
+      navigationTimeoutRef.current = setTimeout(() => {
+        navigation.replace('RoundSummary');
+      }, 100);
     }
     if (!lastCorrectGuess) {
       navigatedToSummaryRef.current = false;
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+        navigationTimeoutRef.current = null;
+      }
     }
-  }, [lastCorrectGuess, navigation]);
+  }, [lastCorrectGuess, navigation, isFocused]);
 
   // Header: replace back with Cancel action
   useLayoutEffect(() => {

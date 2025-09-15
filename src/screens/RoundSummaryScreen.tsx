@@ -11,7 +11,7 @@ interface Props {
 }
 
 export default function RoundSummaryScreen({ navigation }: Props) {
-  const { lastCorrectGuess, continueNextRound, cancelGame, gameState } = useSocket();
+  const { lastCorrectGuess, continueNextRound, cancelGame, gameState, clearCorrectGuess } = useSocket();
   const isContinuingRef = useRef(false);
 
   useLayoutEffect(() => {
@@ -33,6 +33,14 @@ export default function RoundSummaryScreen({ navigation }: Props) {
   }, [navigation, cancelGame]);
 
   // No-op to avoid unused variable warning if needed
+
+  // Clear correct guess when component unmounts to prevent navigation issues
+  useEffect(() => {
+    return () => {
+      console.log('RoundSummaryScreen unmounting, clearing correct guess');
+      clearCorrectGuess();
+    };
+  }, [clearCorrectGuess]);
 
   // Explicitly ignore phase changes until Continue is pressed
   useEffect(() => {
@@ -59,7 +67,13 @@ export default function RoundSummaryScreen({ navigation }: Props) {
         <TouchableOpacity
           style={styles.primaryButton}
           onPress={() => {
+            if (isContinuingRef.current) {
+              console.log('Already continuing, ignoring duplicate press');
+              return;
+            }
             isContinuingRef.current = true;
+            console.log('Continuing to next round, clearing correct guess');
+            clearCorrectGuess();
             continueNextRound();
             navigation.replace('WordSelection');
           }}

@@ -153,12 +153,18 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setGameState(state);
       const timeElapsedSeconds = Math.max(0, 60 - (state?.timeLeft ?? 0));
       // Only set lastCorrectGuess if not already set to avoid multiple triggers
-      setLastCorrectGuess(prev => prev ?? {
-        playerName: guessData.playerName,
-        guess: guessData.guess,
-        timeElapsedSeconds,
+      setLastCorrectGuess(prev => {
+        if (prev) {
+          console.log('Correct guess already set, ignoring duplicate');
+          return prev;
+        }
+        console.log('Setting correct guess:', guessData);
+        return {
+          playerName: guessData.playerName,
+          guess: guessData.guess,
+          timeElapsedSeconds,
+        };
       });
-      console.log('Correct guess:', guessData);
     });
 
     newSocket.on('timer-update', (timeLeft: number) => {

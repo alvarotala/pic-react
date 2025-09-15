@@ -40,9 +40,13 @@ export default function WordSelectionScreen({ navigation }: Props) {
     // Only navigate when this screen is focused (top of stack)
     if (!isFocused) return;
     // If we are showing RoundSummary (lastCorrectGuess present), do not navigate away automatically
-    if (lastCorrectGuess && phase !== 'game-over' && phase !== 'waiting') return;
+    if (lastCorrectGuess && phase !== 'game-over' && phase !== 'waiting') {
+      console.log('WordSelectionScreen: Skipping navigation due to lastCorrectGuess present');
+      return;
+    }
     if (prevPhaseRef.current === phase) return;
 
+    console.log('WordSelectionScreen: Navigating due to phase change:', phase);
     if (phase === 'waiting') {
       navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
     } else if (phase === 'drawing') {
