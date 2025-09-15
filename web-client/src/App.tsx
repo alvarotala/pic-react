@@ -1,13 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import io, { Socket } from 'socket.io-client';
+import { getServerUrl } from './config';
 import './App.css';
-
-// Extend Window interface to include config functions
-declare global {
-  interface Window {
-    getServerUrl?: () => string;
-  }
-}
 
 interface Player {
   id: string;
@@ -36,10 +30,8 @@ interface GameState {
   scores: Record<string, number>;
 }
 
-// Use centralized config if available, fallback to localhost detection
-const SERVER_URL = (typeof window !== 'undefined' && window.getServerUrl) 
-  ? window.getServerUrl() 
-  : (window.location.hostname === 'localhost' ? 'http://192.168.100.203:3001' : '');
+// Use local config
+const SERVER_URL = getServerUrl();
 
 function App() {
   const [socket, setSocket] = useState<Socket | null>(null);

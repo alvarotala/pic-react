@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { SERVER_URL } from '../config/server';
+import { SERVER_URL } from '../config/config';
 
 interface Player {
   id: string;
@@ -58,7 +58,7 @@ interface SocketContextType {
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
-// Server URL is now imported from config/server.ts
+// Server URL is now imported from config/config.ts
 
 export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [socket, setSocket] = useState<Socket | null>(null);

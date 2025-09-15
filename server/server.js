@@ -4,7 +4,6 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
-const { config } = require('../config.js');
 
 const app = express();
 const server = http.createServer(app);
@@ -14,6 +13,8 @@ const io = socketIo(server, {
     methods: ["GET", "POST"]
   }
 });
+
+const PORT = process.env.PORT || process.env.EXPO_PUBLIC_SERVER_PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
@@ -491,10 +492,8 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../web-client/build/index.html'));
 });
 
-const PORT = process.env.PORT || config.server.port;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Pictionary server running on port ${PORT}`);
   console.log(`Server accessible at:`);
   console.log(`  - http://localhost:${PORT}`);
-  console.log(`  - http://${config.server.host}:${PORT}`);
 });
