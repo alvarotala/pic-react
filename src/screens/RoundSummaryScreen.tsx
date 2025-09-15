@@ -63,7 +63,10 @@ export default function RoundSummaryScreen({ navigation }: Props) {
     }
   }, [wasGameCancelled, clearCancelled, navigation]);
 
-  if (!lastCorrectGuess) {
+  // Check if we have a correct guess or if the round ended due to timeout
+  const isTimeout = gameState?.gameState === 'finished' && !lastCorrectGuess;
+  
+  if (!lastCorrectGuess && !isTimeout) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.center}>
@@ -76,9 +79,19 @@ export default function RoundSummaryScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.card}>
-        <Text style={styles.title}>🎉 Correct Guess!</Text>
-        <Text style={styles.text}>{lastCorrectGuess.playerName} guessed "{lastCorrectGuess.guess}"</Text>
-        <Text style={styles.subText}>Time elapsed: {lastCorrectGuess.timeElapsedSeconds}s</Text>
+        {lastCorrectGuess ? (
+          <>
+            <Text style={styles.title}>🎉 Correct Guess!</Text>
+            <Text style={styles.text}>{lastCorrectGuess.playerName} guessed "{lastCorrectGuess.guess}"</Text>
+            <Text style={styles.subText}>Time elapsed: {lastCorrectGuess.timeElapsedSeconds}s</Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.title}>⏰ Time's Up!</Text>
+            <Text style={styles.text}>No one guessed the word in time</Text>
+            <Text style={styles.subText}>The drawer gets 10 points for completing the drawing</Text>
+          </>
+        )}
 
         <TouchableOpacity
           style={styles.primaryButton}

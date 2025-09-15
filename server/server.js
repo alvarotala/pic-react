@@ -460,10 +460,17 @@ io.on('connection', (socket) => {
     room.rounds++;
     console.log(`🔔 Server: Incremented rounds to: ${room.rounds}/${room.maxRounds}`);
     
+    // Clear any existing timer before starting new round
+    if (room.timer) {
+      clearInterval(room.timer);
+      room.timer = null;
+    }
+    
     // Clear drawing data, unlock round, and change to word-selection state
     room.drawingData = null;
     room.roundLocked = false;
     room.gameState = 'word-selection';
+    room.timeLeft = 60; // Reset timer for new round
     io.to(normalizedRoomId).emit('continue-to-word-selection', room.getGameState());
   });
 });

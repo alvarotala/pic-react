@@ -181,6 +181,11 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       console.log('Round finished');
     });
 
+    newSocket.on('round-ended', (state: GameState) => {
+      setGameState(state);
+      console.log('Round ended (timeout)');
+    });
+
     newSocket.on('continue-to-word-selection', (state: GameState) => {
       setGameState(state);
       console.log('Continue to word selection');

@@ -56,6 +56,8 @@ export default function DrawingScreen({ navigation }: Props) {
     // Simple navigation logic
     if (phase === 'waiting') {
       navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    } else if (phase === 'finished') {
+      navigation.replace('RoundSummary');
     } else if (phase === 'game-over') {
       navigation.replace('GameOver');
     }
