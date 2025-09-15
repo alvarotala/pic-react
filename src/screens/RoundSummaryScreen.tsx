@@ -12,7 +12,7 @@ interface Props {
 }
 
 export default function RoundSummaryScreen({ navigation }: Props) {
-  const { lastCorrectGuess, continueNextRound, cancelGame, gameState, clearCorrectGuess } = useSocket();
+  const { lastCorrectGuess, continueNextRound, cancelGame, gameState, clearCorrectGuess, wasGameCancelled, clearCancelled } = useSocket();
   const isFocused = useIsFocused();
   const isContinuingRef = useRef(false);
 
@@ -51,6 +51,17 @@ export default function RoundSummaryScreen({ navigation }: Props) {
       navigation.replace('WordSelection');
     }
   }, [gameState?.gameState, navigation, isFocused]);
+
+  // Handle game cancellation broadcast
+  useEffect(() => {
+    if (wasGameCancelled) {
+      Alert.alert('Game cancelled', 'The host cancelled the game.', [
+        { text: 'OK', onPress: () => {} }
+      ]);
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+      clearCancelled();
+    }
+  }, [wasGameCancelled, clearCancelled, navigation]);
 
   if (!lastCorrectGuess) {
     return (

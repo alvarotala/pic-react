@@ -172,6 +172,12 @@ function App() {
     newSocket.on('drawing-denied', (message: string) => {
       alert(message);
     });
+
+    newSocket.on('game-cancelled', () => {
+      console.log('🔔 Web: Game cancelled by host');
+      alert('Game cancelled by host. Returning to home.');
+      leaveRoom();
+    });
   };
 
   // Auto-connect on component mount

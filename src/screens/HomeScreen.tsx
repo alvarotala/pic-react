@@ -20,7 +20,7 @@ interface Props {
 }
 
 export default function HomeScreen({ navigation }: Props) {
-  const { gameState, isConnected, connect, createRoom, startGame, roomError, clearRoomError } = useSocket();
+  const { gameState, isConnected, connect, createRoom, startGame, roomError, clearRoomError, wasGameCancelled, clearCancelled } = useSocket();
   const [playerName, setPlayerName] = useState('');
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
 
@@ -41,6 +41,16 @@ export default function HomeScreen({ navigation }: Props) {
       clearRoomError();
     }
   }, [roomError, clearRoomError]);
+
+  // Handle game cancellation broadcast
+  useEffect(() => {
+    if (wasGameCancelled) {
+      Alert.alert('Game cancelled', 'The host cancelled the game.', [
+        { text: 'OK', onPress: () => {} }
+      ]);
+      clearCancelled();
+    }
+  }, [wasGameCancelled, clearCancelled]);
 
   const handleCreateRoom = () => {
     if (!playerName.trim()) {
