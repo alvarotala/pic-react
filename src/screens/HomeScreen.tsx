@@ -8,6 +8,7 @@ import {
   Alert,
   SafeAreaView,
   ScrollView,
+  Clipboard,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../App';
@@ -85,12 +86,27 @@ export default function HomeScreen({ navigation }: Props) {
     );
   };
 
+  const handleCopyRoomId = () => {
+    if (gameState?.id) {
+      Clipboard.setString(gameState.id);
+      Alert.alert('Copied!', 'Room ID copied to clipboard');
+    }
+  };
+
   const renderLobby = () => {
     if (!gameState) return null;
 
     return (
       <View style={styles.lobbyContainer}>
-        <Text style={styles.lobbyTitle}>Room: {gameState.id}</Text>
+        <View style={styles.roomIdContainer}>
+          <Text style={styles.lobbyTitle}>Room: {gameState.id}</Text>
+          <TouchableOpacity
+            style={styles.copyButton}
+            onPress={handleCopyRoomId}
+          >
+            <Text style={styles.copyButtonText}>📋 Copy</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.playersTitle}>Players ({gameState.players.length}/4):</Text>
         
         {gameState.players.map((player, index) => (
@@ -309,12 +325,29 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  roomIdContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
   lobbyTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#1e293b',
     textAlign: 'center',
-    marginBottom: 16,
+  },
+  copyButton: {
+    backgroundColor: '#6366f1',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  copyButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   playersTitle: {
     fontSize: 16,
