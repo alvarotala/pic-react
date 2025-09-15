@@ -68,8 +68,15 @@ class GameRoom {
   startNewRound() {
     if (this.players.size < 2) return false;
     
-    this.rounds++;
-    console.log(`🔔 Server: startNewRound - rounds incremented to: ${this.rounds}/${this.maxRounds}`);
+    // If this is a new game (coming from 'waiting' state), reset rounds to 1
+    // Otherwise, increment rounds for next round in same game
+    if (this.gameState === 'waiting') {
+      this.rounds = 1;
+      console.log(`🔔 Server: startNewRound - NEW GAME, rounds reset to: ${this.rounds}/${this.maxRounds}`);
+    } else {
+      this.rounds++;
+      console.log(`🔔 Server: startNewRound - NEXT ROUND, rounds incremented to: ${this.rounds}/${this.maxRounds}`);
+    }
     this.currentWord = '';
     
     // Mobile is ALWAYS the drawer - find the mobile player
@@ -177,6 +184,12 @@ io.on('connection', (socket) => {
       socket.emit('game-start-denied', 'Only mobile devices can start the game');
       console.log(`Game start denied for ${socket.id} - not a mobile device`);
       return;
+    }
+
+    // If game is over, reset to waiting state for new game
+    if (room.gameState === 'game-over') {
+      room.gameState = 'waiting';
+      console.log('🔔 Server: Game was over, reset to waiting state for new game');
     }
 
     console.log('Starting new round...');
