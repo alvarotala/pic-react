@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -27,28 +28,31 @@ const WORD_CATEGORIES = {
 
 export default function WordSelectionScreen({ navigation }: Props) {
   const { gameState, playerId, selectWord, lastCorrectGuess, clearCorrectGuess, cancelGame, wasGameCancelled, clearCancelled, continueNextRound } = useSocket();
+  const isFocused = useIsFocused();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
 
+  const prevPhaseRef = useRef<string | null>(null);
   useEffect(() => {
-    if (gameState) {
-      if (gameState.gameState === 'waiting') {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Home' }],
-        });
-      } else if (gameState.gameState === 'drawing') {
-        navigation.replace('Drawing');
-      } else if (gameState.gameState === 'finished') {
-        // Intermediate summary is handled in RoundSummary screen
-        // Nothing to do here
-      } else if (gameState.gameState === 'game-over') {
-        // Show game over screen
-        navigation.replace('GameOver');
-      }
+    const phase = gameState?.gameState || null;
+    if (!phase) return;
+    // Only navigate when this screen is focused (top of stack)
+    if (!isFocused) return;
+    // If we are showing RoundSummary (lastCorrectGuess present), do not navigate away automatically
+    if (lastCorrectGuess && phase !== 'game-over' && phase !== 'waiting') return;
+    if (prevPhaseRef.current === phase) return;
+
+    if (phase === 'waiting') {
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    } else if (phase === 'drawing') {
+      navigation.replace('Drawing');
+    } else if (phase === 'game-over') {
+      navigation.replace('GameOver');
     }
-  }, [gameState, navigation]);
+
+    prevPhaseRef.current = phase;
+  }, [gameState?.gameState, navigation, isFocused, lastCorrectGuess]);
 
   // Handle game cancellation broadcast
   useEffect(() => {

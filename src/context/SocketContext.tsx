@@ -133,20 +133,16 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     newSocket.on('game-started', (state: GameState) => {
       setGameState(state);
-      setLastCorrectGuess(null);
       console.log('Game started');
     });
 
     newSocket.on('word-selected', (state: GameState) => {
       setGameState(state);
-      setLastCorrectGuess(null);
       console.log('Word selected, starting drawing phase');
     });
 
     newSocket.on('drawing-update', (drawingData: any) => {
-      if (gameState) {
-        setGameState(prev => prev ? { ...prev, drawingData } : null);
-      }
+      setGameState(prev => (prev ? { ...prev, drawingData } : prev));
     });
 
     newSocket.on('guess-submitted', (guessData: any) => {
@@ -156,7 +152,8 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     newSocket.on('correct-guess', (guessData: any, state: GameState) => {
       setGameState(state);
       const timeElapsedSeconds = Math.max(0, 60 - (state?.timeLeft ?? 0));
-      setLastCorrectGuess({
+      // Only set lastCorrectGuess if not already set to avoid multiple triggers
+      setLastCorrectGuess(prev => prev ?? {
         playerName: guessData.playerName,
         guess: guessData.guess,
         timeElapsedSeconds,
@@ -165,9 +162,7 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
 
     newSocket.on('timer-update', (timeLeft: number) => {
-      if (gameState) {
-        setGameState(prev => prev ? { ...prev, timeLeft } : null);
-      }
+      setGameState(prev => (prev ? { ...prev, timeLeft } : prev));
     });
 
     newSocket.on('round-ended', (state: GameState) => {

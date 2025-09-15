@@ -20,12 +20,6 @@ app.use(express.static(path.join(__dirname, '../web-client/build')));
 
 // Game state management
 const gameRooms = new Map();
-const WORDS = [
-  'Cat', 'Dog', 'House', 'Tree', 'Car', 'Sun', 'Moon', 'Star',
-  'Fish', 'Bird', 'Flower', 'Mountain', 'Ocean', 'Rainbow', 'Butterfly', 'Elephant',
-  'Pizza', 'Cake', 'Book', 'Phone', 'Computer', 'Camera', 'Guitar', 'Piano',
-  'Basketball', 'Football', 'Tennis', 'Swimming', 'Running', 'Dancing', 'Singing', 'Painting'
-];
 
 class GameRoom {
   constructor(id, hostId) {
@@ -44,6 +38,7 @@ class GameRoom {
     this.timer = null;
     this.roundEndTimeout = null;
     this.nextRoundTimeout = null;
+    this.roundLocked = false;
   }
 
   addPlayer(socketId, playerName, playerType) {
@@ -91,6 +86,7 @@ class GameRoom {
     this.drawingData = null;
     this.guesses = [];
     this.timeLeft = 60;
+    this.roundLocked = false;
     
     // Set drawing status - mobile is always drawing, web players are always guessing
     this.players.forEach((player, id) => {
@@ -186,7 +182,7 @@ io.on('connection', (socket) => {
     if (room.startNewRound()) {
       console.log('Round started, broadcasting game-started event');
       io.to(normalizedRoomId).emit('game-started', room.getGameState());
-      startGameTimer(normalizedRoomId);
+      // Timer will start when the word is selected
     } else {
       console.log('Failed to start new round');
     }
@@ -250,6 +246,7 @@ io.on('connection', (socket) => {
     room.gameState = 'drawing';
     console.log(`Word selected: ${word}, starting drawing phase for room ${normalizedRoomId}`);
     io.to(normalizedRoomId).emit('word-selected', room.getGameState());
+    startGameTimer(normalizedRoomId);
   });
 
   // Handle drawing data (mobile only)
@@ -280,6 +277,7 @@ io.on('connection', (socket) => {
     const normalizedRoomId = roomId.toLowerCase();
     const room = gameRooms.get(normalizedRoomId);
     if (!room || room.gameState !== 'drawing' || room.currentDrawer === socket.id) return;
+    if (room.roundLocked) return;
 
     const player = room.players.get(socket.id);
     if (!player) return;
@@ -307,9 +305,11 @@ io.on('connection', (socket) => {
       if (drawer) drawer.score = room.scores.get(room.currentDrawer);
       if (guesser) guesser.score = room.scores.get(socket.id);
       
+      // Lock round to prevent duplicate winners
+      room.roundLocked = true;
       io.to(normalizedRoomId).emit('correct-guess', guessData, room.getGameState());
-      
-      // Schedule round end unless host fast-forwards
+
+      // Schedule round end (single, due to lock)
       if (room.roundEndTimeout) {
         clearTimeout(room.roundEndTimeout);
         room.roundEndTimeout = null;

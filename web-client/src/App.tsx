@@ -111,7 +111,7 @@ function App() {
 
     newSocket.on('drawing-update', (drawingData: any) => {
       console.log('Received drawing update:', drawingData);
-      setGameState(prev => prev ? { ...prev, drawingData } : null);
+      setGameState(prev => (prev ? { ...prev, drawingData } : prev));
     });
 
     newSocket.on('guess-submitted', (guessData: any) => {
@@ -125,9 +125,7 @@ function App() {
     });
 
     newSocket.on('timer-update', (timeLeft: number) => {
-      if (gameState) {
-        setGameState(prev => prev ? { ...prev, timeLeft } : null);
-      }
+      setGameState(prev => (prev ? { ...prev, timeLeft } : prev));
     });
 
     newSocket.on('round-ended', (state: GameState) => {
@@ -173,11 +171,6 @@ function App() {
     }
   }, [gameState?.guesses]);
 
-  // Room creation is only available on mobile devices
-  const createRoom = () => {
-    alert('Room creation is only available on mobile devices. Please use the mobile app to create a room.');
-  };
-
   const joinRoom = () => {
     if (!playerName.trim()) {
       alert('Please enter your name!');
@@ -194,11 +187,6 @@ function App() {
     } else {
       alert('Please wait for connection to establish...');
     }
-  };
-
-  // Game starting is only available on mobile devices
-  const startGame = () => {
-    alert('Only the mobile app can start the game. Please ask the room creator to start the game.');
   };
 
   const submitGuess = () => {

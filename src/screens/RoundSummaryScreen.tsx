@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../App';
@@ -11,7 +11,8 @@ interface Props {
 }
 
 export default function RoundSummaryScreen({ navigation }: Props) {
-  const { lastCorrectGuess, continueNextRound, cancelGame } = useSocket();
+  const { lastCorrectGuess, continueNextRound, cancelGame, gameState } = useSocket();
+  const isContinuingRef = useRef(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -31,11 +32,12 @@ export default function RoundSummaryScreen({ navigation }: Props) {
     });
   }, [navigation, cancelGame]);
 
+  // No-op to avoid unused variable warning if needed
+
+  // Explicitly ignore phase changes until Continue is pressed
   useEffect(() => {
-    if (!lastCorrectGuess) {
-      navigation.replace('WordSelection');
-    }
-  }, [lastCorrectGuess, navigation]);
+    // No navigation side-effect here; we only navigate on Continue
+  }, [gameState]);
 
   if (!lastCorrectGuess) {
     return (
@@ -57,6 +59,7 @@ export default function RoundSummaryScreen({ navigation }: Props) {
         <TouchableOpacity
           style={styles.primaryButton}
           onPress={() => {
+            isContinuingRef.current = true;
             continueNextRound();
             navigation.replace('WordSelection');
           }}

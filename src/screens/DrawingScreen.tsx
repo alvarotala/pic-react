@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -20,31 +21,37 @@ interface Props {
 
 export default function DrawingScreen({ navigation }: Props) {
   const { gameState, playerId, sendDrawingData, cancelGame, wasGameCancelled, clearCancelled, lastCorrectGuess } = useSocket();
+  const isFocused = useIsFocused();
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPaths, setCurrentPaths] = useState<string[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const prevPhaseRef = useRef<string | null>(null);
+  const navigatedToSummaryRef = useRef(false);
   useEffect(() => {
-    if (gameState) {
-      if (gameState.gameState === 'waiting') {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Home' }],
-        });
-      } else if (gameState.gameState === 'drawing') {
-        // Sync with server drawing data
-        if (gameState.drawingData && gameState.drawingData.paths) {
-          setCurrentPaths(gameState.drawingData.paths);
-        }
-      } else if (gameState.gameState === 'finished') {
-        // When a word is guessed correctly, show intermediate round summary
-        navigation.replace('RoundSummary');
-      } else if (gameState.gameState === 'game-over') {
-        // Show game over screen
-        navigation.replace('GameOver');
+    const phase = gameState?.gameState || null;
+    if (!phase) return;
+    if (!isFocused) return;
+    if (prevPhaseRef.current === phase) {
+      // Still update drawing data each tick
+      if (phase === 'drawing' && gameState?.drawingData?.paths) {
+        setCurrentPaths(gameState.drawingData.paths);
       }
+      return;
     }
-  }, [gameState, navigation]);
+
+    if (phase === 'waiting') {
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    } else if (phase === 'drawing') {
+      if (gameState?.drawingData?.paths) {
+        setCurrentPaths(gameState.drawingData.paths);
+      }
+    } else if (phase === 'game-over') {
+      navigation.replace('GameOver');
+    }
+
+    prevPhaseRef.current = phase;
+  }, [gameState?.gameState, gameState?.drawingData, navigation, isFocused]);
 
   // Handle game cancellation broadcast
   useEffect(() => {
@@ -57,10 +64,14 @@ export default function DrawingScreen({ navigation }: Props) {
     }
   }, [wasGameCancelled, clearCancelled, navigation]);
 
-  // If a correct guess is received, show summary immediately (without waiting for 'finished')
+  // If a correct guess is received, show summary immediately exactly once
   useEffect(() => {
-    if (lastCorrectGuess) {
+    if (lastCorrectGuess && !navigatedToSummaryRef.current) {
+      navigatedToSummaryRef.current = true;
       navigation.replace('RoundSummary');
+    }
+    if (!lastCorrectGuess) {
+      navigatedToSummaryRef.current = false;
     }
   }, [lastCorrectGuess, navigation]);
 
