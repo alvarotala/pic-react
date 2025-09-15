@@ -77,6 +77,25 @@ cd pic-react
 npm install
 ```
 
+#### 1.1. Configure Environment Variables
+
+Create a `.env` file in the root directory for the mobile app:
+
+```bash
+# Create .env file for mobile app
+touch .env
+```
+
+Add the following content to `.env`, replacing `YOUR_IP_ADDRESS` with your machine's IP address:
+
+```env
+# Mobile app environment variables
+SERVER_HOST=YOUR_IP_ADDRESS
+SERVER_PORT=3001
+```
+
+**Note**: Replace `YOUR_IP_ADDRESS` with your actual machine's IP address. You can find it using the commands in the "Finding Your IP Address" section below.
+
 #### 2. Setup Backend Server
 
 ```bash
@@ -100,7 +119,28 @@ cd web-client
 
 # Install web client dependencies
 npm install
+```
 
+#### 3.1. Configure Web Client Environment Variables
+
+Create a `.env` file in the web-client directory:
+
+```bash
+# Create .env file for web client
+touch .env
+```
+
+Add the following content to `.env`, replacing `YOUR_IP_ADDRESS` with your machine's IP address:
+
+```env
+# Web client environment variables
+SERVER_HOST=YOUR_IP_ADDRESS
+SERVER_PORT=3001
+```
+
+**Note**: Replace `YOUR_IP_ADDRESS` with your actual machine's IP address. You can find it using the commands in the "Finding Your IP Address" section below.
+
+```bash
 # Start the web client
 npm start
 ```
@@ -116,54 +156,6 @@ cd pic-react
 # Start the mobile app
 npm start
 ```
-
-### Quick Start (Automated Setup)
-
-For a faster setup, you can use the provided script that automatically installs dependencies and starts all services:
-
-```bash
-# Make the script executable (first time only)
-chmod +x start-all.sh
-
-# Run the automated setup and start script
-./start-all.sh
-```
-
-This script will:
-- ✅ Check prerequisites (Node.js and npm)
-- 📦 Install all dependencies (mobile app, server, web client)
-- 🚀 Start all three services simultaneously:
-  - Backend server on `http://localhost:3001`
-  - Web client on `http://localhost:3000`
-  - Mobile app (Expo development server)
-- 🛑 Stop all services when you press `Ctrl+C`
-
-**Note**: This script is designed for development and testing. All services run in the background and can be stopped together with `Ctrl+C`.
-
-## Configuration
-
-### Server Configuration
-
-The app uses a centralized configuration system for easy setup and testing. The server IP and port are configured in a single file:
-
-**File: `config.js` (root directory)**
-```javascript
-const config = {
-  server: {
-    host: '192.168.100.203',  // Server IP address
-    port: 3001                 // Server port
-  }
-};
-```
-
-### Updating Configuration
-
-To change the server IP or port for testing:
-
-1. **Edit `config.js`** in the root directory
-2. **Update the `host`** field with your computer's IP address
-3. **Update the `port`** field if needed (default: 3001)
-4. **Restart all services** (server, web client, mobile app)
 
 ### Finding Your IP Address
 
