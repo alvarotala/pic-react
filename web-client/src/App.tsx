@@ -1,6 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import io, { Socket } from 'socket.io-client';
 import './App.css';
+
+// Extend Window interface to include config functions
+declare global {
+  interface Window {
+    getServerUrl?: () => string;
+  }
+}
 
 interface Player {
   id: string;
@@ -29,7 +36,10 @@ interface GameState {
   scores: Record<string, number>;
 }
 
-const SERVER_URL = window.location.hostname === 'localhost' ? 'http://192.168.100.203:3001' : '';
+// Use centralized config if available, fallback to localhost detection
+const SERVER_URL = (typeof window !== 'undefined' && window.getServerUrl) 
+  ? window.getServerUrl() 
+  : (window.location.hostname === 'localhost' ? 'http://192.168.100.203:3001' : '');
 
 function App() {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -46,7 +56,19 @@ function App() {
     timestamp: number;
   }>>([]);
 
-  const connect = () => {
+  const leaveRoom = useCallback(() => {
+    console.log('🔔 Web: Leaving room');
+    // Disconnect from socket to actually leave the room
+    if (socket) {
+      socket.disconnect();
+    }
+    setCurrentScreen('home');
+    setGameState(null);
+    setPlayerName('');
+    setRoomCode('');
+  }, [socket]);
+
+  const connect = useCallback(() => {
     if (socket) {
       console.log('Already connected or connecting...');
       return;
@@ -178,12 +200,12 @@ function App() {
       alert('Game cancelled by host. Returning to home.');
       leaveRoom();
     });
-  };
+  }, [socket, leaveRoom, playerId]);
 
   // Auto-connect on component mount
   useEffect(() => {
     connect();
-  }, []);
+  }, [connect]);
 
   useEffect(() => {
     if (gameState?.guesses) {
@@ -232,18 +254,6 @@ function App() {
     } else {
       console.log('🔔 Web: ❌ Cannot submit guess - conditions not met');
     }
-  };
-
-  const leaveRoom = () => {
-    console.log('🔔 Web: Leaving room');
-    // Disconnect from socket to actually leave the room
-    if (socket) {
-      socket.disconnect();
-    }
-    setCurrentScreen('home');
-    setGameState(null);
-    setPlayerName('');
-    setRoomCode('');
   };
 
   const isCurrentDrawer = gameState?.currentDrawer === playerId;
